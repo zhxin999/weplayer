@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 本文件对播放器而言是只读的，请谨慎编辑 -->
+<DefaultConfig>
+    <Player>
+        <SeekStep time="2" comment="设置键盘seek的单位(s)" />
+        <SupportFile extlist=".mp4;.mkv;.avi;.wmv;.mpg;.mpeg;.ts;.mov;.flv;.rm;.rmvb;.mp3;.3gp" comment="设置文件关联格式" />
+        <Danmu speed="10" comment="设置弹幕移动速度，值越大移动越快" />
+        <CursorHide time="15" comment="设置鼠标隐藏的时间,单位(s)" />
+    </Player>
+    <Audio>
+    </Audio>
+    <Video>
+    </Video>
+</DefaultConfig>
