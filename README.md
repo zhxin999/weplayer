@@ -13,7 +13,7 @@ WePLayer是一款简单，干净，支持UDP播放控制的视频播放器。
 
 #### 支持系统
 
- - Windows (下载)
+ - Windows ( 可执行程序下载: [百度云盘](https://www.runoob.com), 提取码：zhxn)
  - UOS    (下载)
  - Ubuntu  (下载)
  - Jetson (曾经测试过，请自行编译测试)
