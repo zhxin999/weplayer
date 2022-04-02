@@ -101,8 +101,12 @@ int AnLogCallback(int Type, const char* data, int dataLen)
 
     if (data)
     {
+#ifdef AV_OS_WIN32v
        qDebug() << data;
-       //printf("%s", data);
+#else
+       printf("%s", data);
+       fflush(stdout);
+#endif
     }
     return 0;
 }
@@ -139,8 +143,8 @@ int main(int argc, char *argv[])
         if (desktop)
         {
             QRect screenRect = desktop->screenGeometry();
-            int w_width = 1280;
-            int w_height = 720;
+            int w_width = screenRect.width() / 2;
+            int w_height = screenRect.height() / 2;
 
             w.setGeometry((screenRect.width() - w_width) / 2, (screenRect.height() - w_height) / 2, w_width, w_height);
         }

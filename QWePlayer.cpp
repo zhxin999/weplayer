@@ -587,9 +587,11 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
                         QString fileName = fileUrl.fileName();
                         if (gPlayCfgData->IsSupportVideoFile(fileName) == true)
                         {
+                            //MessageOutput("[%s:%d] is local file done[%s] \n", __FUNCTION__, __LINE__, fileUrl.fileName().toStdString().c_str());
                             dragEnterEvt->acceptProposedAction(); //可以在这个窗口部件上拖放对象
-                            dragEnterEvt->setDropAction(Qt::LinkAction);
-                            qDebug()<<"drap current..."<<fileUrl;
+                            //dragEnterEvt->setDropAction(Qt::LinkAction);
+                            //qDebug()<<"drap current..."<<fileUrl;
+                            return true;
                         }
                     }
                 }
@@ -613,7 +615,7 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
                         QString fileName = fileUrl.fileName();
                         if (gPlayCfgData->IsSupportVideoFile(fileName) == true)
                         {
-                            qDebug()<<"drop current..."<<fileUrl.toLocalFile();
+                            //qDebug()<<"drop current..."<<fileUrl.toLocalFile();
                             if (m_Player)
                             {
                                 PlayListAdd(fileUrl.toLocalFile(), nullptr, 0);
