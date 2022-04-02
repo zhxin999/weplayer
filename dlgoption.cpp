@@ -1,6 +1,7 @@
 ﻿#include "dlgoption.h"
 #include "ui_dlgoption.h"
 #include <QMouseEvent>
+#include <QDesktopServices>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
@@ -96,3 +97,7 @@ int DlgOption::GetHardAccelMode()
     return 0;
 }
 
+void DlgOption::on_lblSourceCode_linkActivated(const QString &link)
+{
+    QDesktopServices::openUrl(QUrl(link));
+}

@@ -111,6 +111,8 @@ private slots:
     void on_btnClose_clicked();
     void on_btnSaveTabPlayer_clicked();
 
+    void on_lblSourceCode_linkActivated(const QString &link);
+
 private:
     bool eventFilter(QObject *, QEvent *);
 

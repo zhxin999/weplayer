@@ -253,7 +253,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
            <attribute name="title">
             <string>关于...</string>
            </attribute>
-           <widget class="QLabel" name="label_2">
+           <widget class="QLabel" name="lblSourceCode">
             <property name="geometry">
              <rect>
               <x>40</x>
@@ -266,7 +266,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <string notr="true"/>
             </property>
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;问题反馈: &lt;/span&gt;&lt;a href=&quot;zhxin999@163.com&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#00aaff;&quot;&gt;zhxin999@163.com&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;源码下载: &lt;/span&gt;&lt;a href=&quot;https://github.com/zhxin999/weplayer&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Github&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;  UDP控制接口文档: &lt;/span&gt;&lt;a href=&quot;https://github.com/zhxin999/weplayer/wiki/UDP%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3&quot;&gt;&lt;span style=&quot; text-decoration: underline; color:#0000ff;&quot;&gt;Wiki&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
            <widget class="QLabel" name="label_3">
@@ -282,7 +282,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <string notr="true"/>
             </property>
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;软件版本: 2.0.0 &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;软件版本: 2.0.1 &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
            <widget class="QLabel" name="lblCopyRight">
@@ -361,12 +361,29 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; color:#ffffff;&quot;&gt;WePlayer, 干净，简单，可以第三方播放控制视频播放器&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
-           <zorder>label_2</zorder>
+           <widget class="QLabel" name="label_7">
+            <property name="geometry">
+             <rect>
+              <x>40</x>
+              <y>140</y>
+              <width>391</width>
+              <height>24</height>
+             </rect>
+            </property>
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
+            <property name="text">
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;联系作者: &lt;/span&gt;&lt;a href=&quot;zhxin999@163.com&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#00aaff;&quot;&gt;zhxin999@163.com&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;微信号: zhxin999&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+            </property>
+           </widget>
+           <zorder>lblSourceCode</zorder>
            <zorder>label_3</zorder>
            <zorder>lblCopyRight</zorder>
            <zorder>lblCopyRight_2</zorder>
            <zorder>label_5</zorder>
            <zorder>label_4</zorder>
+           <zorder>label_7</zorder>
           </widget>
          </widget>
         </item>
