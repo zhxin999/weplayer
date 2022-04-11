@@ -601,13 +601,13 @@ void MainWindow::on_player_msg(int MsgCode, qint64 Param1, QString Param2, void*
 
 void MainWindow::on_btnOption_clicked()
 {
-    DlgOption dlgOption(this);
+    DlgOption dlgOption(NULL);
     int render_mode;
 
     render_mode = ui->videoWidget->GetRenderMode();
     dlgOption.SetHardAccelMode(render_mode);
 
-    dlgOption.move((this->width() - dlgOption.width()) / 2, (this->height() - dlgOption.height()) / 2);
+    dlgOption.move(this->x() + (this->width() - dlgOption.width()) / 2, this->y() + (this->height() - dlgOption.height()) / 2);
     if (dlgOption.exec() == 1)
     {
         int mode = dlgOption.GetHardAccelMode();
