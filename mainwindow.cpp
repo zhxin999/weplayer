@@ -681,7 +681,7 @@ void MainWindow::on_talker_msg()
 
                 if (indexNode.isDouble())
                 {
-                    fileindex = askValue.toInt();
+                    fileindex = indexNode.toInt();
                 }
 
                 if (pathNode.isString())
@@ -705,7 +705,7 @@ void MainWindow::on_talker_msg()
 
                 if (indexNode.isDouble())
                 {
-                    fileindex = askValue.toInt();
+                    fileindex = indexNode.toInt();
                 }
 
                 if (fileindex >= 0)
@@ -751,7 +751,7 @@ void MainWindow::on_talker_msg()
 
                 if (indexNode.isDouble())
                 {
-                    fileindex = askValue.toInt();
+                    fileindex = indexNode.toInt();
                 }
 
                 if (fileindex >= 0)
@@ -781,6 +781,8 @@ void MainWindow::on_talker_msg()
                 {
                     strcpy(szMsg, "{\"answer\":\"playstartn_rsp\", \"code\":-1, \"msg\":\"already start open\"}");
                 }
+
+                m_AppTalker.writeDatagram(szMsg, strlen(szMsg), fromHost, fromPort);
             }
             else if (askValue == QString("playpause"))
             {//暂停，继续按钮
@@ -796,6 +798,7 @@ void MainWindow::on_talker_msg()
                 {
                     strcpy(szMsg, "{\"answer\":\"playstartn_rsp\", \"code\":-1, \"msg\":\"not playing\"}");
                 }
+                m_AppTalker.writeDatagram(szMsg, strlen(szMsg), fromHost, fromPort);
             }
             else if (askValue == QString("playstop"))
             {//停止播放
@@ -811,6 +814,7 @@ void MainWindow::on_talker_msg()
                 {
                     strcpy(szMsg, "{\"answer\":\"playstop_rsp\", \"code\":-1, \"msg\":\"error\"}");
                 }
+                m_AppTalker.writeDatagram(szMsg, strlen(szMsg), fromHost, fromPort);
             }
             else if (askValue == QString("seek"))
             {//跳转
@@ -942,16 +946,16 @@ void MainWindow::on_talker_msg()
                                 m_NotifyPort = portNode.toInt();
                                 m_NotifyAddr = addrNode.toString();
                             }
-                            strcpy(szMsg, "{\"answer\":\"setvolume_rsp\", \"code\":0, \"msg\":\"ok\"}");
+                            strcpy(szMsg, "{\"answer\":\"setnotify_rsp\", \"code\":0, \"msg\":\"ok\"}");
                         }
                         else
                         {
-                            strcpy(szMsg, "{\"answer\":\"setvolume_rsp\", \"code\":-1, \"msg\":\"invalid port or addr\"}");
+                            strcpy(szMsg, "{\"answer\":\"setnotify_rsp\", \"code\":-1, \"msg\":\"invalid port or addr\"}");
                         }
                     }
                     else
                     {
-                        strcpy(szMsg, "{\"answer\":\"setvolume_rsp\", \"code\":-1, \"msg\":\"invalid mode\"}");
+                        strcpy(szMsg, "{\"answer\":\"setnotify_rsp\", \"code\":-1, \"msg\":\"invalid mode\"}");
                     }
                 }
                 else
@@ -990,8 +994,8 @@ void MainWindow::on_talker_msg()
                 else
                 {
                     strcpy(szMsg, "{\"answer\":\"playinfo_rsp\", \"code\":-1, \"msg\":\"failed\"}");
+                    m_AppTalker.writeDatagram(szMsg, strlen(szMsg), fromHost, fromPort);
                 }
-                m_AppTalker.writeDatagram(szMsg, strlen(szMsg), fromHost, fromPort);
             }
             else
             {

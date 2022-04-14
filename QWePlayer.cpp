@@ -1026,6 +1026,8 @@ int QWePlayer::PlayListClean()
         delete item;
     }
 
+    PlayStop(false);
+
     return 0;
 }
 
