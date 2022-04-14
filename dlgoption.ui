@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>567</width>
-    <height>360</height>
+    <width>486</width>
+    <height>326</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -96,7 +96,8 @@
           <item>
            <widget class="QLabel" name="lblTitle">
             <property name="styleSheet">
-             <string notr="true">color: rgb(255, 255, 255);</string>
+             <string notr="true">color: rgb(255, 255, 255);
+font: 75 12pt &quot;微软雅黑&quot;;</string>
             </property>
             <property name="text">
              <string>播放器设置</string>
@@ -258,7 +259,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <rect>
               <x>40</x>
               <y>100</y>
-              <width>391</width>
+              <width>361</width>
               <height>24</height>
              </rect>
             </property>
@@ -274,7 +275,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <rect>
               <x>40</x>
               <y>60</y>
-              <width>391</width>
+              <width>361</width>
               <height>24</height>
              </rect>
             </property>
@@ -288,9 +289,9 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
            <widget class="QLabel" name="lblCopyRight">
             <property name="geometry">
              <rect>
-              <x>20</x>
-              <y>210</y>
-              <width>391</width>
+              <x>40</x>
+              <y>190</y>
+              <width>291</width>
               <height>25</height>
              </rect>
             </property>
@@ -326,9 +327,9 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
            <widget class="QLabel" name="lblCopyRight_2">
             <property name="geometry">
              <rect>
-              <x>20</x>
-              <y>250</y>
-              <width>391</width>
+              <x>40</x>
+              <y>230</y>
+              <width>251</width>
               <height>25</height>
              </rect>
             </property>
@@ -350,7 +351,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <rect>
               <x>40</x>
               <y>20</y>
-              <width>381</width>
+              <width>361</width>
               <height>24</height>
              </rect>
             </property>
@@ -366,7 +367,7 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <rect>
               <x>40</x>
               <y>140</y>
-              <width>391</width>
+              <width>361</width>
               <height>24</height>
              </rect>
             </property>

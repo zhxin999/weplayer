@@ -28,11 +28,11 @@ public:
         if (type == QStyle::CT_TabBarTab) {
             s.transpose();
 #ifdef AV_OS_WIN32
-            s.rwidth() = 117; // ����ÿ��tabBar��item�Ĵ�С
+            s.rwidth() = 100; // ����ÿ��tabBar��item�Ĵ�С
 #else
-            s.rwidth() = 117;
+            s.rwidth() = 100;
 #endif
-            s.rheight() = 50;
+            s.rheight() = 30;
         }
         return s;
     }

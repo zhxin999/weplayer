@@ -35,8 +35,12 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
 
+    void StartTalker(QString addr, int port);
     void AutoPlay();
     void AddToPlayList(QString& file, int pos);
+    void PlayListGetName(QString& file, int pos);
+
+
 
 #ifdef AV_OS_WIN32
     //bool nativeEvent(const QByteArray &eventType, void *message, long *result) Q_DECL_OVERRIDE;

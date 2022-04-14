@@ -1035,13 +1035,30 @@ int QWePlayer::PlayListGet(QVariantList & listdata)
 
     for (int i = 0; i<n; i++)
     {
-        QListWidgetItem *item = ui->listPlay->takeItem(0);
+        QListWidgetItem *item = ui->listPlay->item(i);
         if (item)
         {
             QVariantMap var;
             var.insert("file", item->data(PLIST_UDATA_FULLNAME).toString());
             listdata << var;
         }
+    }
+
+    return 0;
+}
+
+int QWePlayer::PlayListGetName(int indx, QString& filename)
+{
+    if ((indx < 0)||(indx >= ui->listPlay->count()))
+    {
+        return 0;
+    }
+
+    QListWidgetItem *item = ui->listPlay->item(indx);
+    if (item)
+    {
+        filename = item->data(PLIST_UDATA_FULLNAME).toString();
+        return 1;
     }
 
     return 0;

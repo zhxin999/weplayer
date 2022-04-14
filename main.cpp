@@ -138,6 +138,9 @@ int main(int argc, char *argv[])
     //作用域确保资源释放
     {
         MainWindow w;
+        QString talkerBind = "127.0.0.1";
+        int talkerPort = 22223;
+        bool enableTalker = true;
 
         QDesktopWidget *desktop = QApplication::desktop();
         if (desktop)
@@ -151,16 +154,39 @@ int main(int argc, char *argv[])
 
         if (argc >= 2)
         {
-            for (int i = argc; i >= 1; i--)
+            QString filePath(argv[1]);
+            QFile file(filePath);
+            if(file.exists())
             {
-                QString filePath(argv[i]);
-                QFile file(filePath);
-                if(file.exists())
+                QString filename;
+
+                w.PlayListGetName(filename, 0);
+
+                if (filename != filePath)
                 {
-                    w.AddToPlayList(filePath, i -1);
+                    w.AddToPlayList(filePath, 0);
+                }
+
+                w.AutoPlay();
+            }
+
+            //开始解析参数
+            for (int i = 2; i++; i<argc)
+            {
+                if (strncmp(argv[i], "-P=", 3) == 0)
+                {//记录下端口
+                    talkerPort = strtol(argv[i] + 3, NULL, 0);
+                }
+                else if (strncmp(argv[i], "-A=", 3) == 0)
+                {//记录下地址
+                    talkerBind = argv[i] + 3;
                 }
             }
-            w.AutoPlay();
+        }
+
+        if (enableTalker)
+        {
+            w.StartTalker(talkerBind, talkerPort);
         }
         w.show();
         a.exec();

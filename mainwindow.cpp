@@ -86,8 +86,7 @@ MainWindow::MainWindow(QWidget *parent) :
     m_enableNotify = false;
     m_NotifyPort = 0;
     m_NotifyAddr = "127.0.0.1";
-    m_AppTalker.bind(QHostAddress("0.0.0.0"), 22234);
-    connect(&m_AppTalker, SIGNAL(readyRead()), this, SLOT(on_talker_msg()));
+
 }
 
 MainWindow::~MainWindow()
@@ -100,6 +99,12 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+void MainWindow::StartTalker(QString addr, int port)
+{
+    m_AppTalker.bind(QHostAddress(addr), port);
+    connect(&m_AppTalker, SIGNAL(readyRead()), this, SLOT(on_talker_msg()));
+}
+
 void MainWindow::AutoPlay()
 {
     ui->videoWidget->PlayListSetCur(0);
@@ -109,6 +114,11 @@ void MainWindow::AutoPlay()
 void MainWindow::AddToPlayList(QString& file, int pos)
 {
     ui->videoWidget->PlayListAdd(file, nullptr, pos);
+}
+
+void MainWindow::PlayListGetName(QString& file, int pos)
+{
+    ui->videoWidget->PlayListGetName(pos, file);
 }
 
 void MainWindow::closeEvent( QCloseEvent * )

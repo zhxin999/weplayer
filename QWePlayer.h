@@ -109,6 +109,8 @@ public:
     int PlayListClean();
     int PlayListGet(QVariantList & listdata);
 
+    int PlayListGetName(int indx, QString& filename);
+
     int PlayStop(bool AutoPlayNext);
     int PlayStart();
     int PlayPause();
