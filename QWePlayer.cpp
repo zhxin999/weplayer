@@ -564,14 +564,16 @@ void QWePlayer::resizeEvent(QResizeEvent *evt)
 }
 bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
 {
-    if(event->type()==QEvent::MouseButtonDblClick)
+    QEvent::Type evtType = event->type();
+
+    if(evtType ==QEvent::MouseButtonDblClick)
     {
         if (watched == this)
         {
             emit sgnlPlayerMsg(PLAYER_MSG_VIDEO_DBCLICK, 0, nullptr, NULL);
         }
     }
-    else if(event->type()==QEvent::DragEnter)
+    else if(evtType==QEvent::DragEnter)
     {
         QDragEnterEvent* dragEnterEvt = static_cast<QDragEnterEvent *>(event);
         if (watched == this)
@@ -599,7 +601,7 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
             }
         }
     }
-    else if(event->type()==QEvent::Drop)
+    else if(evtType==QEvent::Drop)
     {
         QDropEvent* dropEvt = static_cast<QDropEvent *>(event);
         if (watched == this)
@@ -632,6 +634,79 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
                     }
                 }
 
+            }
+        }
+    }
+    else if(evtType == QEvent::Wheel)
+    {
+        QWheelEvent  *evtMouse = static_cast<QWheelEvent  *>(event);
+
+        if (evtMouse->angleDelta().y() > 0)
+        {
+            m_VolumeValue += 5;
+            if (m_VolumeValue > 100)
+                m_VolumeValue = 100;
+        }
+        else
+        {
+            m_VolumeValue -= 5;
+            if (m_VolumeValue < 0)
+                m_VolumeValue = 0;
+        }
+        ui->sliderVol->setValue(m_VolumeValue);
+    }
+    else if(evtType == QEvent::KeyRelease)
+    {
+        QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
+        int keycode = keyEvent->key();
+
+        if (keycode == Qt::Key_Space)
+        {
+            on_btnPlayPause_clicked();
+        }
+        else if ((keycode == Qt::Key_Return))
+        {
+            if (watched == this)
+            {
+                emit sgnlPlayerMsg(PLAYER_MSG_VIDEO_DBCLICK, 0, nullptr, NULL);
+            }
+        }
+        else if (keycode == Qt::Key_Up)
+        {
+            m_VolumeValue += 5;
+            if (m_VolumeValue > 100)
+                m_VolumeValue = 100;
+            ui->sliderVol->setValue(m_VolumeValue);
+        }
+        else if (keycode == Qt::Key_Down)
+        {
+            m_VolumeValue += 5;
+            if (m_VolumeValue > 100)
+                m_VolumeValue = 100;
+            ui->sliderVol->setValue(m_VolumeValue);
+        }
+        else if (keycode == Qt::Key_Right)
+        {
+           int value = m_Slider->value();
+           int max = m_Slider->maximum();
+
+           if (value < max)
+           {
+               value += 1000;
+               if (value < max)
+               {
+                    PlaySeek(value);
+               }
+           }
+        }
+        else if (keycode == Qt::Key_Left)
+        {
+            int value = m_Slider->value();
+
+            value -= 1000;
+            if (value >= 0)
+            {
+                PlaySeek(value);
             }
         }
     }
