@@ -106,12 +106,17 @@ public:
 
     int SetHardAccelMode(int mode);
     int GetHardAccelMode();
+    int SetFormatExt(QString format);
+    int SetUserFormat(QString format);
+    QString GetUserFormat();
 
 private slots:
     void on_btnClose_clicked();
     void on_btnSaveTabPlayer_clicked();
 
     void on_lblSourceCode_linkActivated(const QString &link);
+
+    void on_btnSaveFormat_clicked();
 
 private:
     bool eventFilter(QObject *, QEvent *);

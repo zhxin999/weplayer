@@ -7,6 +7,7 @@
 #include <QMouseEvent>
 #include <QHostAddress>
 #include "dlgoption.h"
+#include "anLogs.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
@@ -17,6 +18,7 @@
 #else
 #define TITLE_BAR_HEIGHT        30
 #endif
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -87,10 +89,22 @@ MainWindow::MainWindow(QWidget *parent) :
     m_NotifyPort = 0;
     m_NotifyAddr = "127.0.0.1";
 
+    ui->btnNewVesion->hide();
+
+    m_NetManager = new QNetworkAccessManager(this);;
+    connect(m_NetManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(on_http_replay(QNetworkReply*)));
+
+    checkNewVersion();
 }
 
 MainWindow::~MainWindow()
 {
+    if (m_NetManager)
+    {
+        delete m_NetManager;
+        m_NetManager = NULL;
+    }
+
     if (m_AppTalkBuf)
     {
         delete m_AppTalkBuf;
@@ -616,17 +630,22 @@ void MainWindow::on_btnOption_clicked()
 
     render_mode = ui->videoWidget->GetRenderMode();
     dlgOption.SetHardAccelMode(render_mode);
+    dlgOption.SetFormatExt(gPlayCfgData->GetNodeAttribute("DefaultConfig/Player/SupportFile", "extlist", ""));
+
+    dlgOption.SetUserFormat(gPlayCfgData->GetNodeAttribute("UserConfig/Format", "extlist", ""));
 
     dlgOption.move(this->x() + (this->width() - dlgOption.width()) / 2, this->y() + (this->height() - dlgOption.height()) / 2);
     if (dlgOption.exec() == 1)
     {
         int mode = dlgOption.GetHardAccelMode();
 
+        QString usrExtList = dlgOption.GetUserFormat();
+
+        gPlayCfgData->SetNodeAttribute("UserConfig/Format", "extlist", usrExtList);
+
         ui->videoWidget->SetRenderModeCfg(mode);
         QString path("");
-
         ui->videoWidget->SaveSetting(path);
-
     }
 
 }
@@ -1006,8 +1025,83 @@ void MainWindow::on_talker_msg()
         }
         else
         {
-            qDebug() << "error format>:" << RootNode.isEmpty();
+            MessageError("[%s:%d] error message format\n", __FUNCTION__, __LINE__);
+            //qDebug() << "error format>:" << RootNode.isEmpty();
         }
     }
+}
 
+//检查有不有新版本
+void MainWindow::checkNewVersion()
+{
+    QNetworkRequest request;
+    QString params;
+    QString url = "http://www.ucosoft.cn/api/v2/weplayer/update_check?";
+
+#if defined AV_OS_WIN32
+    params += "platform=win32";
+#elif defined _UOS_X86_64
+    params += "os=uos";
+#endif
+
+    //版本号
+    params += "&version=";
+    params += WEPLAYER_VERSION;
+
+    QString str_uuid = gPlayCfgData->GetNodeAttribute("UserConfig/UUID", "value", "");
+    if (str_uuid.length() > 0)
+    {
+        params += "&uuid=";
+        params += str_uuid;
+    }
+
+    url.append(params);
+
+    request.setUrl(QUrl(url));
+    QNetworkReply* reply = m_NetManager->get(request);
+}
+
+void MainWindow::on_http_replay(QNetworkReply *reply)
+{
+    /*
+     * 返回格斯 {"code":0, "msg":"ok","data":{"url":"xxx", "version":"222","msg":"有新版本，请到应用商店下载"}}
+    */
+    if(reply && reply->error() == QNetworkReply::NoError) {
+        QByteArray data = reply->readAll();
+        //QByteArray byteData(data.toStdString());
+        QJsonDocument parse_doucment = QJsonDocument::fromJson(data);
+        QJsonObject RootNode = parse_doucment.object();
+
+        if (RootNode.contains("code"))
+        {
+            QJsonValue codeNode = RootNode.value("code");
+            int codeValue = codeNode.toInt();
+            QJsonValue dataNode = RootNode.value("data");
+
+            if ((codeValue == 0) && dataNode.isObject())
+            {
+                QJsonObject dataObj = dataNode.toObject();
+                //QJsonValue urlNode = dataObj.value("url");
+                //QJsonValue versionNode = dataObj.value("version");
+                QJsonValue msgNode = dataObj.value("msg");
+                if (msgNode.isString())
+                {//开始显示有更新的图标
+                    ui->btnNewVesion->show();
+                    ui->btnNewVesion->setToolTip(msgNode.toString());
+                }
+
+            }
+        }
+        else
+        {
+            MessageError("[%s:%d] error response format:%s\n", __FUNCTION__, __LINE__, data.toStdString().c_str());
+        }
+    }
+    else
+    {
+        //qDebug() << reply->errorString();
+        MessageError("[%s:%d] Failed to query new version:%s\n", __FUNCTION__, __LINE__, reply->errorString().toStdString().c_str());
+    }
+
+    reply->close();
 }

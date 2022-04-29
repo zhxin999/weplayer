@@ -99,6 +99,42 @@ color: rgb(255, 255, 255);</string>
         </widget>
        </item>
        <item>
+        <widget class="QPushButton" name="btnNewVesion">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>20</width>
+           <height>20</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::NoFocus</enum>
+         </property>
+         <property name="toolTip">
+          <string>有新版本</string>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QPushButton{border-image:url(:/resource/newversion.png);}
+QPushButton:hover{border-image:url(:/resource/newversion.png);}
+QPushButton:pressed{border-image:url(:/resource/newversion.png);}</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
         <widget class="QPushButton" name="btnOption">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Fixed" vsizetype="Fixed">

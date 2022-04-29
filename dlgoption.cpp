@@ -101,3 +101,25 @@ void DlgOption::on_lblSourceCode_linkActivated(const QString &link)
 {
     QDesktopServices::openUrl(QUrl(link));
 }
+
+int DlgOption::SetFormatExt(QString format)
+{
+    ui->editFormatExt->setText(format);
+    return 0;
+}
+
+int DlgOption::SetUserFormat(QString format)
+{
+    ui->leUserFormat->setText(format);
+    return 0;
+}
+QString DlgOption::GetUserFormat()
+{
+    return ui->leUserFormat->text();
+}
+
+void DlgOption::on_btnSaveFormat_clicked()
+{
+    m_retCode = 1;
+    this->done(m_retCode);
+}

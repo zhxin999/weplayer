@@ -692,7 +692,10 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
 
            if (value < max)
            {
-               value += 1000;
+               QString time = gPlayCfgData->GetNodeAttribute("DefaultConfig/Player/SeekStep", "time", "1");
+               int skip = time.toInt() * 1000;
+
+               value += skip;
                if (value < max)
                {
                     PlaySeek(value);
@@ -703,7 +706,10 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
         {
             int value = m_Slider->value();
 
-            value -= 1000;
+            QString time = gPlayCfgData->GetNodeAttribute("DefaultConfig/Player/SeekStep", "time", "1");
+            int skip = time.toInt() * 1000;
+
+            value -= skip;
             if (value >= 0)
             {
                 PlaySeek(value);

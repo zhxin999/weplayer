@@ -27,5 +27,6 @@
         <file>resource/min.png</file>
         <file>resource/min_hover.png</file>
         <file>resource/logo.png</file>
+        <file>resource/newversion.png</file>
     </qresource>
 </RCC>

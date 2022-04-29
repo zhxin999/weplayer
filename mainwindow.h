@@ -6,10 +6,15 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QUdpSocket>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QNetworkAccessManager>
 #include "QWePlayer.h"
 #include "anIncludes.h"
 #
 #define APP_TALK_BUF_MAX  65535
+
+#define WEPLAYER_VERSION  "2.0.2"
 
 namespace Ui {
 class MainWindow;
@@ -40,14 +45,9 @@ public:
     void AddToPlayList(QString& file, int pos);
     void PlayListGetName(QString& file, int pos);
 
-
-
-#ifdef AV_OS_WIN32
-    //bool nativeEvent(const QByteArray &eventType, void *message, long *result) Q_DECL_OVERRIDE;
-#endif
 private:
     void ToggleFullScreen();
-
+    void checkNewVersion();
 
 protected:
   virtual void resizeEvent(QResizeEvent *);
@@ -63,6 +63,7 @@ private slots:
 
     void on_player_msg(int MsgCode, qint64 Param1, QString Param2, void* Param3);
     void on_talker_msg();
+    void on_http_replay(QNetworkReply*);
 
 private:
     Ui::MainWindow *ui;
@@ -77,6 +78,8 @@ private:
     QWidget * m_BorderLeft;
 
     QUdpSocket m_AppTalker;
+
+    QNetworkAccessManager *m_NetManager;
 
     char* m_AppTalkBuf;
 
