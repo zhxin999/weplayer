@@ -18,6 +18,8 @@ DlgOption::DlgOption(QWidget *parent) :
     ui->tabOptions->tabBar()->setStyle(new CustomTabStyle);
     ui->tabOptions->setStyleSheet("QTabWidget::pane { border: 0; }");
 
+    ui->tabOptions->setCurrentIndex(0);
+
     ui->lblTitle->setAttribute(Qt::WA_TranslucentBackground, true);
     ui->lblTitle->setAttribute(Qt::WA_TransparentForMouseEvents, true);
 

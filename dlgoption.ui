@@ -176,7 +176,7 @@ border-color: rgb(255, 170, 255);</string>
            <enum>QTabWidget::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tabPlayer">
            <property name="sizePolicy">
@@ -296,7 +296,8 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              </rect>
             </property>
             <property name="styleSheet">
-             <string notr="true">background-color: rgba(0, 0, 0, 0);color:#F0F0F0</string>
+             <string notr="true">background-color: rgba(60, 60, 60, 255);color:#F0F0F0;border-width:0px;
+border-color: rgba(60, 60, 60, 255);</string>
             </property>
             <property name="readOnly">
              <bool>true</bool>
@@ -378,7 +379,7 @@ QPushButton:disabled{border:0px;border-radius:10px;color:#7C7C7C; background-col
              <string notr="true"/>
             </property>
             <property name="text">
-             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;源码下载: &lt;/span&gt;&lt;a href=&quot;https://github.com/zhxin999/weplayer&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#00aaff;&quot;&gt;Github&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt; UDP控制接口文档: &lt;/span&gt;&lt;a href=&quot;https://github.com/zhxin999/weplayer/wiki/UDP%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E%E6%96%87%E6%A1%A3&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#55aaff;&quot;&gt;Wiki&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt;源码下载: &lt;/span&gt;&lt;a href=&quot;https://github.com/zhxin999/weplayer&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#00aaff;&quot;&gt;Github&lt;/span&gt;&lt;/a&gt;&lt;span style=&quot; font-size:10pt; color:#f0f0f0;&quot;&gt; UDP控制接口文档: &lt;/span&gt;&lt;a href=&quot;http://www.ucosoft.cn/html/book/weplayer/&quot;&gt;&lt;span style=&quot; font-weight:600; text-decoration: underline; color:#55aaff;&quot;&gt;Wiki&lt;/span&gt;&lt;/a&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
             </property>
            </widget>
            <widget class="QLabel" name="lblVersion">

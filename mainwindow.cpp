@@ -14,7 +14,7 @@
 #endif
 
 #ifdef AV_OS_WIN32
-#define TITLE_BAR_HEIGHT        44
+#define TITLE_BAR_HEIGHT        32
 #else
 #define TITLE_BAR_HEIGHT        30
 #endif
@@ -1039,10 +1039,14 @@ void MainWindow::checkNewVersion()
     QString url = "http://www.ucosoft.cn/api/v2/weplayer/update_check?";
 
 #if defined AV_OS_WIN32
-    params += "platform=win32";
+    params += "os=win32";
 #elif defined _UOS_X86_64
     params += "os=uos";
 #endif
+
+    //cpu架构
+    params += "&arch=";
+    params += "x86";
 
     //版本号
     params += "&version=";
