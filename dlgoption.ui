@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>486</width>
-    <height>326</height>
+    <width>550</width>
+    <height>356</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -127,6 +127,9 @@ font: 75 12pt &quot;微软雅黑&quot;;</string>
               <height>20</height>
              </size>
             </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
             <property name="styleSheet">
              <string notr="true">QPushButton{border-image:url(:/resource/close.png);color: rgb(255, 255, 255);}
 QPushButton:hover{border-image:url(:/resource/close_hover.png);color: rgb(255, 255, 255);}
@@ -139,7 +142,7 @@ QPushButton:pressed{border-image:url(:/resource/close.png);color: rgb(255, 255, 
              <bool>false</bool>
             </property>
             <property name="flat">
-             <bool>false</bool>
+             <bool>true</bool>
             </property>
            </widget>
           </item>
@@ -291,8 +294,8 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
              <rect>
               <x>30</x>
               <y>40</y>
-              <width>321</width>
-              <height>41</height>
+              <width>371</width>
+              <height>51</height>
              </rect>
             </property>
             <property name="styleSheet">
@@ -307,8 +310,8 @@ border-color: rgba(60, 60, 60, 255);</string>
             <property name="geometry">
              <rect>
               <x>30</x>
-              <y>90</y>
-              <width>171</width>
+              <y>100</y>
+              <width>371</width>
               <height>31</height>
              </rect>
             </property>
@@ -326,8 +329,8 @@ border-color: rgba(60, 60, 60, 255);</string>
             <property name="geometry">
              <rect>
               <x>30</x>
-              <y>120</y>
-              <width>321</width>
+              <y>140</y>
+              <width>371</width>
               <height>21</height>
              </rect>
             </property>
