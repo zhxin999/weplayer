@@ -179,7 +179,7 @@ border-color: rgb(255, 170, 255);</string>
            <enum>QTabWidget::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tabPlayer">
            <property name="sizePolicy">
@@ -461,7 +461,7 @@ QPushButton:disabled{border:0px;border-radius:10px;color:#7C7C7C; background-col
              <rect>
               <x>40</x>
               <y>230</y>
-              <width>251</width>
+              <width>331</width>
               <height>25</height>
              </rect>
             </property>
@@ -469,7 +469,7 @@ QPushButton:disabled{border:0px;border-radius:10px;color:#7C7C7C; background-col
              <string notr="true">color: rgb(124, 124, 124);</string>
             </property>
             <property name="text">
-             <string>本播放器基于FFMPEG和Qt开发</string>
+             <string>本播放器基于FFMPEG,Qt,portaudio,libyuv,libuv开发</string>
             </property>
             <property name="textFormat">
              <enum>Qt::AutoText</enum>

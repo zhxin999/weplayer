@@ -375,18 +375,31 @@ end:
    return ret;
 }
 
-static int anPlayer_Flush_AvPacketList(ANRingQueneLF_h AvPacketList)
+static int anPlayer_Flush_AvPacketList(ANRingQueneLF_h AvPacketList, uint64_t BreakOnSpecial)
 {
     AVPacket* pkt;
     int loops = 1000;
+    uint64_t pkt_special;
 
     while (ANRingQLF_Get_Count(AvPacketList) != 0)
     {
         pkt = (AVPacket* )ANRingQLF_Header_Get(AvPacketList);
         if (pkt)
         {
-            av_packet_unref(pkt);
-            ANRingQLF_Header_Pop(AvPacketList);
+            pkt_special = (uint64_t)pkt;
+            if (pkt_special > 100) //内存地址可能有这种
+            {
+                av_packet_unref(pkt);
+                ANRingQLF_Header_Pop(AvPacketList);
+            }
+            else
+            {
+                ANRingQLF_Header_Pop(AvPacketList);
+                if (pkt_special == BreakOnSpecial)
+                {
+                    break;
+                }
+            }
         }
         else
         {
@@ -408,14 +421,24 @@ static int anPlayer_Push_AvPacketList(ANRingQueneLF_h AvPacketList, AVPacket* pk
    AVPacket* pkt_free;
    int loops = 1000;
    int ret = -1;
+   uint64_t pkt_special;
+
+   pkt_special = (uint64_t)pkt;
    
    while (loops >= 0)
    {
       pkt_free = (AVPacket* )ANRingQLF_Back_Get(AvPacketList);
       if (pkt_free)
       {
-         av_init_packet(pkt_free);
-         av_packet_ref(pkt_free, pkt);
+         if (pkt_special > 100)
+         {
+             av_init_packet(pkt_free);
+             av_packet_ref(pkt_free, pkt);
+         }
+         else
+         {
+            pkt_free = pkt;
+         }
          ANRingQLF_Back_Push(AvPacketList);
          ret = 0;
          break;
@@ -529,29 +552,11 @@ int anPlayer_Play_Seek(ANPlayer_t* pPlayer, int64_t new_pos)
    }
 
    //清空缓存队列
-   anPlayer_Flush_AvPacketList(pPlayer->AudioPktQ);
-   anPlayer_Flush_AvPacketList(pPlayer->VideoPktQ);
+   //anPlayer_Flush_AvPacketList(pPlayer->AudioPktQ);
+   //anPlayer_Flush_AvPacketList(pPlayer->VideoPktQ);
    
    //应该把视频和音频线程的缓存的数据给清空，要不然因为pts的原因可能会卡死
    CMDList_t *Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
-   if (Msg)
-   {
-      Msg->Code = CAVQUE_CMD_RESET;
-      uv_mutex_lock(&(pPlayer->lock));      
-      ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pVideoDecCmdList), (OBJ_BASE_t*)Msg);
-      uv_mutex_unlock(&(pPlayer->lock));
-   }
-
-   Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
-   if (Msg)
-   {
-      Msg->Code = CAVQUE_CMD_RESET;
-      uv_mutex_lock(&(pPlayer->lock));      
-      ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pAudioDecCmdList), (OBJ_BASE_t*)Msg);
-      uv_mutex_unlock(&(pPlayer->lock));
-   }
-
-   Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
    if (Msg)
    {
       Msg->Code = TIMER_CMD_START;
@@ -560,6 +565,34 @@ int anPlayer_Play_Seek(ANPlayer_t* pPlayer, int64_t new_pos)
       uv_mutex_lock(&(pPlayer->lock));      
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pTimerCmdList), (OBJ_BASE_t*)Msg);
       uv_mutex_unlock(&(pPlayer->lock));
+   }
+
+   if (pPlayer->video_stream_idx >= 0)
+   {
+       anPlayer_Push_AvPacketList(pPlayer->VideoPktQ, (AVPacket*)1);
+       
+       Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
+       if (Msg)
+       {
+          Msg->Code = CAVQUE_CMD_RESET;
+          uv_mutex_lock(&(pPlayer->lock));      
+          ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pVideoDecCmdList), (OBJ_BASE_t*)Msg);
+          uv_mutex_unlock(&(pPlayer->lock));
+       }
+   }
+
+   if (pPlayer->audio_stream_idx >= 0)
+   {
+       anPlayer_Push_AvPacketList(pPlayer->AudioPktQ, (AVPacket*)1);
+       
+       Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
+       if (Msg)
+       {
+          Msg->Code = CAVQUE_CMD_RESET;
+          uv_mutex_lock(&(pPlayer->lock));      
+          ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pAudioDecCmdList), (OBJ_BASE_t*)Msg);
+          uv_mutex_unlock(&(pPlayer->lock));
+       }
    }
    
    if (pPlayer->EventCb)
@@ -809,6 +842,7 @@ void anPlayer_Thread_Video_dec(void* param)
    //filter描述
    FILTER_DATA Filters_Subtext;
    int empty_loop = 0;
+   int need_new_key = 0;
 
    if (pPlayer == NULL)
    {
@@ -906,6 +940,7 @@ void anPlayer_Thread_Video_dec(void* param)
        anPlayer_Subtext_VFilter_Create(pPlayer, video_stream, &Filters_Subtext);
    }
 
+   need_new_key = 1;
    while ((pPlayer->task_loop == 1) && (pPlayer->task_loop_video == 1))
    {
       empty_loop = 0;
@@ -929,8 +964,10 @@ void anPlayer_Thread_Video_dec(void* param)
                }
                
                frame_pre_disp = AV_NOPTS_VALUE;
-                                 
+               need_new_key = 1;
+               
                anPlayer_Flush_AvFrameList(pVideoFrameList);
+               anPlayer_Flush_AvPacketList(pPlayer->VideoPktQ, 1);
 
                avcodec_flush_buffers(video_dec_ctx);
                MessageError("[%s:%d] reset video thread\n", __FUNCTION__, __LINE__);
@@ -1055,15 +1092,24 @@ void anPlayer_Thread_Video_dec(void* param)
 
       if (ANRingQLF_Get_Count(pVideoFrameList) <= 10)
       {
+          uint64_t pkt_special;
          //decode....         
          new_pkt = (AVPacket* )ANRingQLF_Header_Get(pPlayer->VideoPktQ);
+         pkt_special = (uint64_t)new_pkt;
          
-         if (new_pkt)
+         if (new_pkt && (pkt_special > 100))
          {            
             //MessageOutput("[%s:%d] push video packet\n", __FUNCTION__, __LINE__);
              AVFrame* frame_dec = NULL;
              int decode_loops = 0;
 
+             if ((need_new_key == 1) && ((new_pkt->flags & AV_PKT_FLAG_KEY) == 0))
+             {
+                 av_packet_unref(new_pkt);
+                 ANRingQLF_Header_Pop(pPlayer->VideoPktQ);
+                 continue;
+             }
+             need_new_key = 0;
             avcodec_send_packet(video_dec_ctx, new_pkt);
             av_packet_unref(new_pkt);
             ANRingQLF_Header_Pop(pPlayer->VideoPktQ);       
@@ -1124,6 +1170,10 @@ void anPlayer_Thread_Video_dec(void* param)
             }
             
             empty_loop++;
+         }
+         else if (pkt_special > 0)
+         {
+             ANRingQLF_Header_Pop(pPlayer->VideoPktQ);       
          }
       }
 
@@ -1312,6 +1362,7 @@ void anPlayer_Thread_Audio_dec(void* param)
                frame_ready = NULL;
                
                anPlayer_Flush_AvFrameList(pAudioFrameList);
+               anPlayer_Flush_AvPacketList(pPlayer->AudioPktQ, 1);
 
                avcodec_flush_buffers(audio_dec_ctx);
                MessageError("[%s:%d] reset audio thread\n", __FUNCTION__, __LINE__);
@@ -1440,9 +1491,12 @@ void anPlayer_Thread_Audio_dec(void* param)
       }
 
       if (ANRingQLF_Get_Count(pAudioFrameList) <= 10)
-      {         
+      {    
+         uint64_t pkt_special;
          new_pkt = (AVPacket* )ANRingQLF_Header_Get(pPlayer->AudioPktQ);
-         if (new_pkt)
+         pkt_special = (uint64_t)new_pkt;
+         
+         if (new_pkt && (pkt_special > 100))
          {
             avcodec_send_packet(audio_dec_ctx, new_pkt);
             
@@ -1482,7 +1536,11 @@ void anPlayer_Thread_Audio_dec(void* param)
             }
 
             empty_loop++;
-         }         
+         }           
+         else if (pkt_special > 0)
+         {
+             ANRingQLF_Header_Pop(pPlayer->AudioPktQ);       
+         }
       }
 
       if (empty_loop == 0)
@@ -1978,8 +2036,8 @@ void anPlayer_Thread_Reader(void* param)
    anPlayer_Close_File(pPlayer);
 
    //读取端已经全部退出了，所以可以放心全部删除
-   anPlayer_Flush_AvPacketList(pPlayer->VideoPktQ);
-   anPlayer_Flush_AvPacketList(pPlayer->AudioPktQ);
+   anPlayer_Flush_AvPacketList(pPlayer->VideoPktQ, 0);
+   anPlayer_Flush_AvPacketList(pPlayer->AudioPktQ, 0);
 
    //销毁所有数据
    ANRingQLF_Destory(&(pPlayer->VideoPktQ));
