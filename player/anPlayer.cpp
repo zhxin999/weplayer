@@ -9,6 +9,11 @@
 #include "anListObject.h"
 #include "anAudioDevice.h"
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
+
 #define FILE_NAME_MAX       2048
 #define AVPACKET_CACHED_MAX     512
 
@@ -92,10 +97,10 @@ typedef struct _FILTER_DESC__
 
 struct _ANPlayerData
 {
-   ANOSTask_Obj_t taskHandleReader;
-   ANOSTask_Obj_t taskHandleVideo;
-   ANOSTask_Obj_t taskHandleAudio;
-   ANOSTask_Obj_t taskHandleTimer;
+   uv_thread_t taskHandleReader;
+   uv_thread_t taskHandleVideo;
+   uv_thread_t taskHandleAudio;
+   uv_thread_t taskHandleTimer;
    int task_loop;
    int task_loop_reader;
    int task_loop_video;
@@ -136,8 +141,7 @@ struct _ANPlayerData
    ANRingQueneLF_h AudioPktQ;
 
    //互斥锁
-   ANOSMutex_t lock;
-
+   uv_mutex_t lock;
 
    //播放相关的数据
    AVFormatContext *fmt_ctx;
@@ -163,6 +167,7 @@ int64_t anPlayer_Get_SysTime_ms()
    return timeGetTime();
 #else
    return av_gettime_relative() / 1000;
+    //return av_gettime() / 1000;
 #endif
 }
 
@@ -532,18 +537,18 @@ int anPlayer_Play_Seek(ANPlayer_t* pPlayer, int64_t new_pos)
    if (Msg)
    {
       Msg->Code = CAVQUE_CMD_RESET;
-      anOS_Mutex_Lock(pPlayer->lock);      
+      uv_mutex_lock(&(pPlayer->lock));      
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pVideoDecCmdList), (OBJ_BASE_t*)Msg);
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
 
    Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
    if (Msg)
    {
       Msg->Code = CAVQUE_CMD_RESET;
-      anOS_Mutex_Lock(pPlayer->lock);      
+      uv_mutex_lock(&(pPlayer->lock));      
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pAudioDecCmdList), (OBJ_BASE_t*)Msg);
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
 
    Msg = (CMDList_t *)malloc(sizeof(CMDList_t));
@@ -552,9 +557,9 @@ int anPlayer_Play_Seek(ANPlayer_t* pPlayer, int64_t new_pos)
       Msg->Code = TIMER_CMD_START;
       Msg->Param3 = new_seek_pos/1000;
       
-      anOS_Mutex_Lock(pPlayer->lock);      
+      uv_mutex_lock(&(pPlayer->lock));      
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pTimerCmdList), (OBJ_BASE_t*)Msg);
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
    
    if (pPlayer->EventCb)
@@ -657,25 +662,11 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
    pPlayer->task_loop_video = 0;
    pPlayer->task_loop_audio = 0;
 
-   if (pPlayer->taskHandleVideo)
-   {
-      if (anOS_Task_IsCreated(pPlayer->taskHandleVideo))
-      {
-         anOS_Task_Destory(pPlayer->taskHandleVideo, 0);
-      }
-      pPlayer->taskHandleVideo = NULL;
-   }
+   uv_thread_join(&(pPlayer->taskHandleVideo));
+   uv_thread_join(&(pPlayer->taskHandleAudio));
 
-   
-   if (pPlayer->taskHandleAudio)
-   {
-      if (anOS_Task_IsCreated(pPlayer->taskHandleAudio))
-      {
-         anOS_Task_Destory(pPlayer->taskHandleAudio, 0);
-      }
-      pPlayer->taskHandleAudio = NULL;
-   }
-
+   memset(&pPlayer->taskHandleVideo, 0, sizeof(pPlayer->taskHandleVideo));
+   memset(&pPlayer->taskHandleAudio, 0, sizeof(pPlayer->taskHandleAudio));
 
    if (pPlayer->fmt_ctx)
    {
@@ -683,7 +674,7 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
       pPlayer->fmt_ctx = NULL;
    }
 
-   anOS_Mutex_Lock(pPlayer->lock);      
+   uv_mutex_lock(&(pPlayer->lock));    
 
    //清空队列
    if (pPlayer->pAudioDecCmdList)
@@ -707,7 +698,7 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
       pPlayer->pTimerCmdList = NULL;
    }
 
-   anOS_Mutex_unLock(pPlayer->lock);
+   uv_mutex_unlock(&(pPlayer->lock));
    return 0;
 }
 
@@ -792,7 +783,7 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
     return 0;
 }
 
-void* anPlayer_Thread_Video_dec(void* param)
+void anPlayer_Thread_Video_dec(void* param)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)param;
    AVStream *video_stream;
@@ -803,9 +794,8 @@ void* anPlayer_Thread_Video_dec(void* param)
    AVPacket * new_pkt;
    AVFrame* frame_ready;
    int64_t frame_ready_pts_ms;
-   int64_t playtime_ms;
-   int64_t systime_previous;
-   int64_t systime_now;
+   int64_t playtime_ms;   
+   int64_t frame_pre_disp;
    //基准时间
    int64_t video_start_time_ms = AV_NOPTS_VALUE;
    AVCodec *dec;
@@ -823,7 +813,7 @@ void* anPlayer_Thread_Video_dec(void* param)
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Param\n", __FUNCTION__, __LINE__);
-      return NULL;
+      return;
    }
 
    memset(&Filters_Subtext, 0, sizeof(Filters_Subtext));
@@ -888,7 +878,7 @@ void* anPlayer_Thread_Video_dec(void* param)
       }
    }
 
-   //video_dec_ctx->thread_count = 8;
+   //video_dec_ctx->thread_count = 4;
    //av_dict_set(&opts, "threads", "auto", 0);   
    av_dict_set(&opts, "threads", "auto", 0);
    //av_dict_set(&opts, "refcounted_frames", "1", 0);
@@ -909,13 +899,13 @@ void* anPlayer_Thread_Video_dec(void* param)
    //
    play_start_stream = video_start_time_ms;
    play_start_ms = anPlayer_Get_SysTime_ms() + 500;
+   frame_pre_disp = AV_NOPTS_VALUE;
 
    if (strlen(pPlayer->szSubtextFilter) > 0)
    {
        anPlayer_Subtext_VFilter_Create(pPlayer, video_stream, &Filters_Subtext);
    }
 
-   systime_previous = AV_NOPTS_VALUE;
    while ((pPlayer->task_loop == 1) && (pPlayer->task_loop_video == 1))
    {
       empty_loop = 0;
@@ -924,9 +914,9 @@ void* anPlayer_Thread_Video_dec(void* param)
       {
          CMDList_t* pNewCmd = NULL;
       
-         anOS_Mutex_Lock(pPlayer->lock);
+         uv_mutex_lock(&(pPlayer->lock));
          pNewCmd = (CMDList_t*)ObjBase_List_GetHead((OBJ_BASE_t**)&(pPlayer->pVideoDecCmdList));
-         anOS_Mutex_unLock(pPlayer->lock);
+         uv_mutex_unlock(&(pPlayer->lock));
          
          if (pNewCmd)
          {
@@ -937,6 +927,8 @@ void* anPlayer_Thread_Video_dec(void* param)
                   av_frame_free(&frame_ready);
                   frame_ready = NULL;
                }
+               
+               frame_pre_disp = AV_NOPTS_VALUE;
                                  
                anPlayer_Flush_AvFrameList(pVideoFrameList);
 
@@ -1031,38 +1023,21 @@ void* anPlayer_Thread_Video_dec(void* param)
          {
             //渲染
             //如果是非常老的数据，直接丢掉
-            systime_now = anPlayer_Get_SysTime_ms();
-            if ((playtime_ms - frame_ready_pts_ms <= 1000) && \
-                    ((systime_previous == AV_NOPTS_VALUE) || abs(systime_now - systime_previous) > 20))
+            if ((playtime_ms - frame_ready_pts_ms <= 1000) || (ABS_TICKS(frame_pre_disp, frame_ready_pts_ms) > 100))
             {
-               int64_t time_ms_tmp;
-
-               systime_previous = systime_now;
-               
-               if (frame_ready->pts != AV_NOPTS_VALUE)
-               {
-                  time_ms_tmp = (int64_t)(frame_ready->pts * video_stream->time_base.num * 1000) / video_stream->time_base.den;
-               }
-               else
-               {
-                  if (frame_ready->pkt_dts != AV_NOPTS_VALUE)
-                  {
-                     time_ms_tmp = (int64_t)(frame_ready->pkt_dts * video_stream->time_base.num * 1000) / video_stream->time_base.den;
-                  }
-               }
-
+                frame_pre_disp = frame_ready_pts_ms;
                if (video_frame_conveterd != NULL)
                 {                   
                    if (pPlayer->VideoCb)
                    {
-                      pPlayer->VideoCb(pPlayer, video_frame_conveterd, time_ms_tmp - video_start_time_ms, pPlayer->UserData);
+                      pPlayer->VideoCb(pPlayer, video_frame_conveterd, frame_ready_pts_ms - video_start_time_ms, pPlayer->UserData);
                    }
                 }
                 else
                 {
                    if (pPlayer->VideoCb)
                    {
-                      pPlayer->VideoCb(pPlayer, frame_ready, time_ms_tmp - video_start_time_ms, pPlayer->UserData);
+                      pPlayer->VideoCb(pPlayer, frame_ready, frame_ready_pts_ms - video_start_time_ms, pPlayer->UserData);
                    }
                 }
             }
@@ -1078,7 +1053,7 @@ void* anPlayer_Thread_Video_dec(void* param)
          }
       }
 
-      if (ANRingQLF_Get_Count(pVideoFrameList) <= 4)
+      if (ANRingQLF_Get_Count(pVideoFrameList) <= 10)
       {
          //decode....         
          new_pkt = (AVPacket* )ANRingQLF_Header_Get(pPlayer->VideoPktQ);
@@ -1154,7 +1129,7 @@ void* anPlayer_Thread_Video_dec(void* param)
 
       if (empty_loop == 0)
       {
-         av_usleep(20000);
+         av_usleep(10000);
          empty_loop = 0;
       }
 
@@ -1217,10 +1192,10 @@ quit:
       pVideoFrameList = NULL;
    }
 
-   return NULL;
+   return;
 }
 
-void* anPlayer_Thread_Audio_dec(void* param)
+void anPlayer_Thread_Audio_dec(void* param)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)param;
    AVStream *audio_stream;
@@ -1252,7 +1227,7 @@ void* anPlayer_Thread_Audio_dec(void* param)
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Param\n", __FUNCTION__, __LINE__);
-      return NULL;
+      return;
    }
 
    pAudioFrameList = ANRingQLF_Create(128, sizeof(AVFrame*));
@@ -1325,9 +1300,9 @@ void* anPlayer_Thread_Audio_dec(void* param)
       {        
          CMDList_t* pNewCmd = NULL;
       
-         anOS_Mutex_Lock(pPlayer->lock);
+         uv_mutex_lock(&(pPlayer->lock));
          pNewCmd = (CMDList_t*)ObjBase_List_GetHead((OBJ_BASE_t**)&(pPlayer->pAudioDecCmdList));
-         anOS_Mutex_unLock(pPlayer->lock);
+         uv_mutex_unlock(&(pPlayer->lock));
          
          if (pNewCmd)
          {
@@ -1376,10 +1351,10 @@ void* anPlayer_Thread_Audio_dec(void* param)
          if (frame_ready_pts_ms <= playtime_ms)
          {
             //渲染
-            //MessageOutput("[%s:%d] frame_ready_pts_ms=%lld\n", __FUNCTION__, __LINE__, frame_ready_pts_ms);
-
             if (playtime_ms - frame_ready_pts_ms < 200)
             {               
+               // MessageOutput("[%s:%d] playtime_ms=%lld, frame_ready_pts_ms=%lld\n", __FUNCTION__, __LINE__, playtime_ms, frame_ready_pts_ms);
+
                //必须转换了输出,如果格式一致，就不用转换
                if ((frame_ready->channels == pPlayer->AudioOutChannels) 
                   && (frame_ready->sample_rate == pPlayer->AudioOutSampleRate)
@@ -1464,7 +1439,7 @@ void* anPlayer_Thread_Audio_dec(void* param)
          }
       }
 
-      if (ANRingQLF_Get_Count(pAudioFrameList) <= 5)
+      if (ANRingQLF_Get_Count(pAudioFrameList) <= 10)
       {         
          new_pkt = (AVPacket* )ANRingQLF_Header_Get(pPlayer->AudioPktQ);
          if (new_pkt)
@@ -1498,7 +1473,6 @@ void* anPlayer_Thread_Audio_dec(void* param)
                          break;
                       }
                   }
-
                }
 
                if (frame_dec)
@@ -1513,7 +1487,7 @@ void* anPlayer_Thread_Audio_dec(void* param)
 
       if (empty_loop == 0)
       {
-         av_usleep(20000);
+         av_usleep(10000);
          empty_loop = 0;
       }
 
@@ -1568,10 +1542,10 @@ quit:
       ANRingQLF_Destory(&pAudioFrameList);
       pAudioFrameList = NULL;
    }
-   return NULL;
+   return;
 }
 
-void* anPlayer_Thread_Reader(void* param)
+void anPlayer_Thread_Reader(void* param)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)param;
    int Ret;
@@ -1589,7 +1563,7 @@ void* anPlayer_Thread_Reader(void* param)
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Param\n", __FUNCTION__, __LINE__);
-      return NULL;
+      return;
    }
 
    reset_pts_firstframe = 0;
@@ -1610,11 +1584,11 @@ void* anPlayer_Thread_Reader(void* param)
       {
          CMDList_t *pNewCmd = NULL;
 
-         anOS_Mutex_Lock(pPlayer->lock);
+         uv_mutex_lock(&(pPlayer->lock));
       
          pNewCmd = (CMDList_t *)ObjBase_List_GetHead((OBJ_BASE_t**)&(pPlayer->pReaderCmdList));
          
-         anOS_Mutex_unLock(pPlayer->lock);
+         uv_mutex_unlock(&(pPlayer->lock));
          
          if (pNewCmd)
          {
@@ -1636,9 +1610,9 @@ void* anPlayer_Thread_Reader(void* param)
                {
                   Msg->Code = TIMER_CMD_PAUSE;
                   Msg->Param3 = AV_NOPTS_VALUE;
-                  anOS_Mutex_Lock(pPlayer->lock);
+                  uv_mutex_lock(&(pPlayer->lock));
                   ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pTimerCmdList), (OBJ_BASE_t*)Msg);
-                  anOS_Mutex_unLock(pPlayer->lock);
+                  uv_mutex_unlock(&(pPlayer->lock));
                }               
             }
             else if (pNewCmd->Code == READER_CMD_Play)
@@ -1655,9 +1629,9 @@ void* anPlayer_Thread_Reader(void* param)
                {
                   Msg->Code = TIMER_CMD_START;
                   Msg->Param3 = AV_NOPTS_VALUE;
-                  anOS_Mutex_Lock(pPlayer->lock);
+                  uv_mutex_lock(&(pPlayer->lock));
                   ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pTimerCmdList), (OBJ_BASE_t*)Msg);
-                  anOS_Mutex_unLock(pPlayer->lock);
+                  uv_mutex_unlock(&(pPlayer->lock));
                }               
             }
             else if (pNewCmd->Code == READER_CMD_Seek)
@@ -1713,11 +1687,11 @@ void* anPlayer_Thread_Reader(void* param)
             if (pPlayer->audio_stream_idx >= 0)
             {
                //play_data->time_axis_play = TICKS_AXIS_BY_AUDIO;
-               pPlayer->task_loop_audio = 1;
-               if (anOS_Task_Create(&(pPlayer->taskHandleAudio), NULL, anPlayer_Thread_Audio_dec, pPlayer) < 0)
+               pPlayer->task_loop_audio = 1;               
+               if (uv_thread_create(&(pPlayer->taskHandleAudio), anPlayer_Thread_Audio_dec, pPlayer) < 0)
                {
-                  pPlayer->taskHandleAudio = NULL;
-                  MessageError("[%s:%d] can't create thread timer\n", __FUNCTION__, __LINE__);
+                  MessageError("[%s:%d] can't create thread video\n", __FUNCTION__, __LINE__);
+                  memset(&(pPlayer->taskHandleAudio), 0, sizeof(pPlayer->taskHandleAudio));
                }
             }
             
@@ -1725,10 +1699,10 @@ void* anPlayer_Thread_Reader(void* param)
             {
                //play_data->time_axis_play = TICKS_AXIS_BY_VIDEO;
                pPlayer->task_loop_video = 1;               
-               if (anOS_Task_Create(&(pPlayer->taskHandleVideo), NULL, anPlayer_Thread_Video_dec, pPlayer) < 0)
+               if (uv_thread_create(&(pPlayer->taskHandleVideo), anPlayer_Thread_Video_dec, pPlayer) < 0)
                {
-                  pPlayer->taskHandleVideo = NULL;
-                  MessageError("[%s:%d] can't create thread timer\n", __FUNCTION__, __LINE__);
+                  MessageError("[%s:%d] can't create thread video\n", __FUNCTION__, __LINE__);
+                  memset(&(pPlayer->taskHandleVideo), 0, sizeof(pPlayer->taskHandleVideo));
                }
             }
 
@@ -1786,30 +1760,32 @@ void* anPlayer_Thread_Reader(void* param)
                   Msg->Param3 = pts_min;
                }
 
+               Msg->Param3 -= 500;
+
                //记录下开始时间
                file_start_time_ms = Msg->Param3;
 
                //找到当前pts最小的一路流
-               anOS_Mutex_Lock(pPlayer->lock);
+               uv_mutex_lock(&(pPlayer->lock));
                ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pTimerCmdList), (OBJ_BASE_t*)Msg);
-               anOS_Mutex_unLock(pPlayer->lock);
+               uv_mutex_unlock(&(pPlayer->lock));
             }
             else
             {
                MessageError("[%s:%d] Failed to alloc memory\n", __FUNCTION__, __LINE__);
-               
-               if (pPlayer->audio_stream_idx >= 0)
-               {
-                  pPlayer->time_axis_type = TICKS_AXIS_BY_AUDIO;
-               }
-               else
-               {
-                  if (pPlayer->video_stream_idx >= 0)
-                  {
-                     pPlayer->time_axis_type = TICKS_AXIS_BY_VIDEO;
-                  }
-               }
             }
+
+            /*if (pPlayer->audio_stream_idx >= 0)
+            {
+               pPlayer->time_axis_type = TICKS_AXIS_BY_AUDIO;
+            }
+            else
+            {
+               if (pPlayer->video_stream_idx >= 0)
+               {
+                  pPlayer->time_axis_type = TICKS_AXIS_BY_VIDEO;
+               }
+            }*/
             
             video_st_dts = AV_NOPTS_VALUE;
             audio_st_dts = AV_NOPTS_VALUE;
@@ -1984,12 +1960,10 @@ void* anPlayer_Thread_Reader(void* param)
          }
       }
 
-      
       if (need_read_pkt == 0)
       {
-         av_usleep(30000);
+         av_usleep(20000);
       }
-
    }
 
    
@@ -2014,7 +1988,7 @@ void* anPlayer_Thread_Reader(void* param)
    pPlayer->VideoPktQ = NULL;
    pPlayer->AudioPktQ = NULL;
 
-   anOS_Mutex_Lock(pPlayer->lock);
+   uv_mutex_lock(&(pPlayer->lock));
    
    if (pPlayer->pReaderCmdList)
    {
@@ -2023,7 +1997,7 @@ void* anPlayer_Thread_Reader(void* param)
       pPlayer->pReaderCmdList = NULL;
    }
 
-   anOS_Mutex_unLock(pPlayer->lock);
+   uv_mutex_unlock(&(pPlayer->lock));
 
    if (pPlayer->EventCb)
    {
@@ -2033,10 +2007,10 @@ void* anPlayer_Thread_Reader(void* param)
       
    MessageOutput("[%s:%d] task quit\n", __FUNCTION__, __LINE__);
 
-   return NULL;
+   return;
 }
 
-void* anPlayer_Thread_Timer(void* param)
+void anPlayer_Thread_Timer(void* param)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)param;
    int64_t start_pts = 0;
@@ -2050,7 +2024,7 @@ void* anPlayer_Thread_Timer(void* param)
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Param\n", __FUNCTION__, __LINE__);
-      return NULL;
+      return;
    }
 
    while ((pPlayer->task_loop == 1))
@@ -2059,11 +2033,11 @@ void* anPlayer_Thread_Timer(void* param)
       {
          CMDList_t *pNewCmd = NULL;
 
-         anOS_Mutex_Lock(pPlayer->lock);
+         uv_mutex_lock(&(pPlayer->lock));
       
          pNewCmd = (CMDList_t *)ObjBase_List_GetHead((OBJ_BASE_t**)&(pPlayer->pTimerCmdList));
          
-         anOS_Mutex_unLock(pPlayer->lock);
+         uv_mutex_unlock(&(pPlayer->lock));
          
          if (pNewCmd)
          {
@@ -2119,27 +2093,30 @@ void* anPlayer_Thread_Timer(void* param)
          continue;
       }
       
-      cur_sys_time = anPlayer_Get_SysTime_ms();
-            
-      Speed = pPlayer->PlaySpeed;
-      
-      if (Speed > 200)
-          Speed = 200;
-
-      if (Speed < 1)
-          Speed = 1;
-      cur_pts = ((cur_sys_time - start_sys_time) * Speed) / 100 + start_pts;
-
       //设置当前系统播放时间，单位ms
-      //pObjs->playtime_update(play_data, cur_pts);
       if (pPlayer->time_axis_type == TICKS_AXIS_BY_TIMER)
       {
-         anmisc_data_exchange_int64(&(pPlayer->time_axis_play), cur_pts);
+          cur_sys_time = anPlayer_Get_SysTime_ms();
+                
+          Speed = pPlayer->PlaySpeed;
+          
+          if (Speed > 200)
+              Speed = 200;
+          
+          if (Speed < 1)
+              Speed = 1;
+          cur_pts = ((cur_sys_time - start_sys_time) * Speed) / 100 + start_pts;
+
+          anmisc_data_exchange_int64(&(pPlayer->time_axis_play), cur_pts);
+      }
+      else
+      {
+          anmisc_data_exchange_int64(&cur_pts, (pPlayer->time_axis_play));
       }
 
       if (pPlayer->EventCb)
       {
-         if (ABS_TICKS(cur_pts, pre_notify_pts) > 100)
+         if (ABS_TICKS(cur_pts, pre_notify_pts) > 200)
          {
              pPlayer->EventCb(pPlayer, ANPLYAER_EVENT_PTS_UPDATE, cur_pts, NULL, NULL, pPlayer->UserData);
              pre_notify_pts = cur_pts;
@@ -2149,7 +2126,7 @@ void* anPlayer_Thread_Timer(void* param)
       av_usleep(10000);
    }
 
-   return NULL;
+   return;
 }
 
 
@@ -2201,8 +2178,7 @@ int ANPlayer_Inst_Create(ANPlayer_h* pHandle, const char* szFileName, void* pUse
    pPlayer->PlaySpeed = 100;
    pPlayer->UserData = pUserData;
 
-   anOS_Mutex_Create(&(pPlayer->lock));
-
+   uv_mutex_init(&(pPlayer->lock));
    MessageOutput("[%s:%d] debug [%s]\n", __FUNCTION__, __LINE__, pPlayer->szFilename);
    
    *pHandle = pPlayer;
@@ -2222,7 +2198,7 @@ int ANPlayer_Inst_Destory(ANPlayer_h* pHandle)
 
    ANPlayer_Inst_Stop(pPlayer);
 
-   anOS_Mutex_Destory(pPlayer->lock);
+   uv_mutex_destroy(&(pPlayer->lock));
 
    MessageOutput("[%s:%d] debug [%s]\n", __FUNCTION__, __LINE__, pPlayer->szFilename);
 
@@ -2255,16 +2231,16 @@ int ANPlayer_Inst_Open(ANPlayer_h pHandle, uint32_t Flag)
    pPlayer->task_loop_video = 0;
    pPlayer->task_loop_audio = 0;
    
-   if (anOS_Task_Create(&(pPlayer->taskHandleReader), NULL, anPlayer_Thread_Reader, pPlayer) < 0)
+   if (uv_thread_create(&(pPlayer->taskHandleReader), anPlayer_Thread_Reader, pPlayer) < 0)
    {
       MessageError("[%s:%d] can't create thread reader\n", __FUNCTION__, __LINE__);
       return -1;
    }
 
-   if (anOS_Task_Create(&(pPlayer->taskHandleTimer), NULL, anPlayer_Thread_Timer, pPlayer) < 0)
+   if (uv_thread_create(&(pPlayer->taskHandleTimer), anPlayer_Thread_Timer, pPlayer) < 0)
    {
       pPlayer->task_loop = 0;
-      anOS_Task_Destory(pPlayer->taskHandleReader, 0);
+      uv_thread_join(&(pPlayer->taskHandleReader));
       pPlayer->taskHandleReader = NULL;
       
       MessageError("[%s:%d] can't create thread timer\n", __FUNCTION__, __LINE__);
@@ -2296,13 +2272,13 @@ int ANPlayer_Inst_Play(ANPlayer_h pHandle, long Seek, uint32_t Flag)
    Msg = (CMDList_t *)calloc(1, sizeof(CMDList_t));
    if (Msg)
    {
-      anOS_Mutex_Lock(pPlayer->lock);
+      uv_mutex_lock(&(pPlayer->lock));
    
       Msg->Code = READER_CMD_Play;
       //Msg->Param1 = Seek;
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pReaderCmdList), (OBJ_BASE_t*)Msg);
       
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
 
    return 0;
@@ -2329,12 +2305,12 @@ int ANPlayer_Inst_Pause(ANPlayer_h pHandle)
    Msg = (CMDList_t *)calloc(1, sizeof(CMDList_t));
    if (Msg)
    {
-      anOS_Mutex_Lock(pPlayer->lock);
+      uv_mutex_lock(&(pPlayer->lock));
    
       Msg->Code = READER_CMD_Pause;
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pReaderCmdList), (OBJ_BASE_t*)Msg);
       
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
 
    return 0;
@@ -2352,19 +2328,13 @@ int ANPlayer_Inst_Stop(ANPlayer_h pHandle)
 
    pPlayer->task_loop = 0;
 
-   if (anOS_Task_IsCreated(pPlayer->taskHandleReader))
-   {
-      anOS_Task_Destory(pPlayer->taskHandleReader, 0);
-      pPlayer->taskHandleReader = NULL;
-   }
+   uv_thread_join(&(pPlayer->taskHandleReader));
+   uv_thread_join(&(pPlayer->taskHandleTimer));
 
-   if (anOS_Task_IsCreated(pPlayer->taskHandleTimer))
-   {
-      anOS_Task_Destory(pPlayer->taskHandleTimer, 0);
-      pPlayer->taskHandleTimer = NULL;
-   }
-   
-   anOS_Mutex_Lock(pPlayer->lock);
+   memset(&pPlayer->taskHandleReader, 0, sizeof(pPlayer->taskHandleReader));
+   memset(&pPlayer->taskHandleTimer, 0, sizeof(pPlayer->taskHandleTimer));
+      
+   uv_mutex_lock(&(pPlayer->lock));
 
    //这个地方得销毁资源，因为有可能有人在线程停止之后还在发数据的情况   
    if (pPlayer->pReaderCmdList)
@@ -2373,7 +2343,7 @@ int ANPlayer_Inst_Stop(ANPlayer_h pHandle)
       ObjBase_FreeList_UserData((OBJ_BASE_t*)pPlayer->pReaderCmdList, NULL);
       pPlayer->pReaderCmdList = NULL;
    }
-   anOS_Mutex_unLock(pPlayer->lock);
+   uv_mutex_unlock(&(pPlayer->lock));
 
    return 0;
 }
@@ -2399,13 +2369,13 @@ int ANPlayer_Inst_Seek(ANPlayer_h pHandle, int64_t Seek, uint32_t Flag)
    Msg = (CMDList_t *)calloc(1, sizeof(CMDList_t));
    if (Msg)
    {
-      anOS_Mutex_Lock(pPlayer->lock);
+      uv_mutex_lock(&(pPlayer->lock));
    
       Msg->Code = READER_CMD_Seek;
       Msg->Param1 = (int)Seek;
       ObjBase_List_AppendEnd((OBJ_BASE_t**)&(pPlayer->pReaderCmdList), (OBJ_BASE_t*)Msg);
       
-      anOS_Mutex_unLock(pPlayer->lock);
+      uv_mutex_unlock(&(pPlayer->lock));
    }
 
    return 0;

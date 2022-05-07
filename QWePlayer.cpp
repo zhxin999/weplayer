@@ -20,8 +20,6 @@
 #define PLAYPROCESS_BAR_HEIGHT      12
 #define PLAYLIST_BAR_WIDTH          200
 
-#define AUDIO_SAMPLE_RATE        48000
-
 enum
 {
     UI_MSG_AVPLAY_BASE = 100,
@@ -79,6 +77,8 @@ QWePlayer::QWePlayer(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    setMouseTracking(true); //开启鼠标追踪
+
     m_Slider = new CWeSlider(this);
     m_Slider->show();
     m_Slider->setFocusPolicy(Qt::NoFocus);
@@ -93,8 +93,13 @@ QWePlayer::QWePlayer(QWidget *parent) :
     m_GlI420Render = NULL;
     m_GlRGBARender = NULL;
     m_SoftRgbRender = NULL;
+    m_KeepAspect = true;
 
     SetRenderMode(RENDER_MODE_GLI420);
+    
+    //找到一个合适的声音输出参数
+    PlaybackDev::GetDeviceFmt(-1, m_AudioChannel, m_AudioSamplerate);
+    MessageOutput("use audio format[%d:%d]\n", m_AudioChannel, m_AudioSamplerate);
 
     //设置背景色
     this->setAttribute(Qt::WA_StyledBackground,true);
@@ -376,7 +381,7 @@ int QWePlayer::ANPlayer_Audio_Callback(ANPlayer_h pPlayer, uint8_t* pData, int D
         {
            pObjs->VolumeFilterCopy(pData, pData, DataLen, pObjs->m_VolumeValue);
         }
-        pObjs->m_AudioPlayback.PushData(pData, DataLen / 4);
+        pObjs->m_AudioPlayback.PushData(pData, DataLen / (pObjs->m_AudioChannel * 2));
         //audio_packet_put(&(pObjs->m_AudioPlayback.m_AudioRingBuf), pData, DataLen, (uint64_t)pts);
     }
     return 0;
@@ -513,6 +518,30 @@ void QWePlayer::SetRenderModeCfg(int mode)
     {
         m_RenderMode = RENDER_MODE_SOFT;
     }
+}
+
+void QWePlayer::SetKeepAspect(bool bKeep)
+{
+    m_KeepAspect = bKeep;
+    if (m_SoftRgbRender)
+    {
+        m_SoftRgbRender->SetKeepAspect(m_KeepAspect);
+    }
+
+    if (m_GlI420Render)
+    {
+        m_GlI420Render->SetKeepAspect(m_KeepAspect);
+    }
+
+    if (m_GlRGBARender)
+    {
+        m_GlRGBARender->SetKeepAspect(m_KeepAspect);
+    }
+}
+
+bool QWePlayer::GetKeepAspect()
+{
+    return m_KeepAspect;
 }
 
 void QWePlayer::UserResize()
@@ -911,6 +940,20 @@ GetValue:
             }
         }
 
+        QDomElement eleCfgKeepAspect = elementCfg.firstChildElement("KeepAspect");
+        if (!eleCfgKeepAspect.isNull())
+        {
+            QString value = eleCfgKeepAspect.attribute("value");
+            if (value == "1")
+            {
+                SetKeepAspect(true);
+            }
+            else
+            {
+                SetKeepAspect(false);
+            }
+        }
+
         QDomElement eleCfgVRender = elementCfg.firstChildElement("VRender");
         if (!eleCfgVRender.isNull())
         {
@@ -1006,6 +1049,17 @@ void QWePlayer::SaveSetting(QString& path)
         else
         {
             nodeSkinMode.setAttribute("value", "full");
+        }
+
+        QDomElement nodeKeepAspect = doc.createElement("KeepAspect");
+        nodeFile.appendChild(nodeKeepAspect);
+        if (m_KeepAspect == true)
+        {
+            nodeKeepAspect.setAttribute("value", "1");
+        }
+        else
+        {
+            nodeKeepAspect.setAttribute("value", "0");
         }
 
         QDomElement nodeVRender = doc.createElement("VRender");
@@ -1555,8 +1609,8 @@ int QWePlayer::PlayStart()
             m_Player = handle;
             m_HandleList.push_back(m_Player);
 
-            m_AudioPlayback.SetOutputFormat(2, AUDIO_SAMPLE_RATE);
-            m_AudioPlayback.PlayStart(-1, 2, AUDIO_SAMPLE_RATE);
+            m_AudioPlayback.SetOutputFormat(m_AudioChannel, m_AudioSamplerate);
+            m_AudioPlayback.PlayStart(-1, m_AudioChannel, m_AudioSamplerate);
             //audio_packet_flush(&(m_AudioPlayback.m_AudioRingBuf));
             m_AudioPlayback.Flush();
 
@@ -1667,7 +1721,7 @@ ANPlayer_h QWePlayer::OpenFile(PLAYFILE_ITEM& item)
     {
         ANPlayer_Inst_Set_VideoOutFormat(pPlayer, AV_PIX_FMT_BGRA, 0, 0);
     }
-    ANPlayer_Inst_Set_AudioOutFormat(pPlayer, 2, AUDIO_SAMPLE_RATE);
+    ANPlayer_Inst_Set_AudioOutFormat(pPlayer, m_AudioChannel, m_AudioSamplerate);
     ANPlayer_Inst_Set_PlayCallback(pPlayer,   QWePlayer::ANPlayer_Video_Callback,\
                                                QWePlayer::ANPlayer_Audio_Callback, \
                                                QWePlayer::ANPlayer_Event_Callback);
@@ -1680,8 +1734,8 @@ ANPlayer_h QWePlayer::OpenFile(PLAYFILE_ITEM& item)
     }
     ANPlayer_Inst_Open(pPlayer, 0);
 
-    m_AudioPlayback.SetOutputFormat(2, AUDIO_SAMPLE_RATE);
-    m_AudioPlayback.PlayStart(-1, 2, AUDIO_SAMPLE_RATE);
+    m_AudioPlayback.SetOutputFormat(m_AudioChannel, m_AudioSamplerate);
+    m_AudioPlayback.PlayStart(-1, m_AudioChannel, m_AudioSamplerate);
     //audio_packet_flush(&(m_AudioPlayback.m_AudioRingBuf));
     m_AudioPlayback.Flush();
 

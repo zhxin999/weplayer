@@ -1,6 +1,5 @@
 ﻿#ifndef QWEPLAYER_H
 #define QWEPLAYER_H
-
 #include <QWidget>
 #include <QList>
 #include <QListWidget>
@@ -11,9 +10,10 @@
 #include <QByteArray>
 #include "CWeSlider.h"
 #include "CWeWidgetMisc.h"
-#include "CWeVideoRender.h"
+
 #include "anPlayer.h"
 #include "CAudioDevs.h"
+#include "CWeVideoRender.h"
 
 namespace Ui {
 class QWePlayer;
@@ -93,6 +93,10 @@ public:
     //设置显示模式
     void SetSkinMode(int mode);
     void SetRenderMode(int mode);
+
+    //设置渲染
+    void SetKeepAspect(bool bKeep);
+    bool GetKeepAspect();
 
     int GetRenderMode();
     void SetRenderModeCfg(int mode);
@@ -204,6 +208,9 @@ private:
     //音频播放器
     PlaybackDev m_AudioPlayback;
 
+    int m_AudioChannel;
+    int m_AudioSamplerate;
+
     int m_VolumeValue;
     bool m_IsMuteAudio;
 
@@ -217,6 +224,7 @@ private:
     int m_PlayerMode;
 
     int m_RenderMode;
+    bool m_KeepAspect;
 
     QList<ANPlayer_h> m_HandleList;
     QString m_defCfgFile;

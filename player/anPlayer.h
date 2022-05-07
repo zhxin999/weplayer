@@ -16,11 +16,6 @@ extern "C"
 #include <libavfilter/buffersrc.h>
 #include <libavfilter/buffersink.h>
 }
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <pthread.h>
-#endif
 
 
 typedef enum

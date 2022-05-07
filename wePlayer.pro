@@ -27,8 +27,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 win32 {
     LIBS += -L$$PWD/libs
     INCLUDEPATH += $$PWD/util $$PWD/player $$PWD/includes
-    DEFINES += AV_OS_WIN32
-    LIBS += -lavcodec -lwinmm -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -lportaudio_x86
+    DEFINES += AV_OS_WIN32 WIN32_LEAN_AND_MEAN
+    LIBS += -lavcodec -lwinmm -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -lws2_32 -luv -lportaudio_x86
 
     CONFIG(debug, debug|release) {
         #LIBS += -lvld
@@ -58,7 +58,7 @@ unix{
         LIBS += -L$$PWD/UOS/lib
         INCLUDEPATH += $$PWD/util $$PWD/player $$PWD/UOS/include
         #DEFINES += AV_OS_WIN32
-        LIBS += -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -lportaudio -lasound -lyuv
+        LIBS += -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -luv_a -ldl -lportaudio -lasound -lyuv
 
         CONFIG(debug, debug|release) {
             TARGET=wePlayer_d
@@ -69,7 +69,7 @@ unix{
         LIBS += -L$$PWD/libs
         INCLUDEPATH += $$PWD/util $$PWD/player $$PWD/includes
         #DEFINES += AV_OS_WIN32
-        LIBS += -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -lportaudio
+        LIBS += -lavcodec -lavdevice -lavfilter -lavformat -lavutil -lswresample -lswscale -luv_a -ldl -lportaudio
 
         CONFIG(debug, debug|release) {
             TARGET=wePlayer_d

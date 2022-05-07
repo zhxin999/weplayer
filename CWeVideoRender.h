@@ -25,6 +25,7 @@ public:
 
     int PlayOneFrame(unsigned char* RgbData, int LineSize, int Width, int Height);
     void ResetDisplay();
+    void SetKeepAspect(bool bKeep);
 protected:
     virtual void paintEvent(QPaintEvent*);
 signals:
@@ -37,6 +38,7 @@ private:
     QImage *m_RenderImage;
     unsigned char* m_RenderData;
     QMutex m_mutex;
+    bool m_KeepAspect;
 };
 
 
@@ -49,6 +51,7 @@ public:
 
   void PlayOneFrame(unsigned char* YData, int YPitch,unsigned char* UData, int UPitch, unsigned char* VData, int VPitch, int Width, int Height);
   void ResetDisplay();
+  void SetKeepAspect(bool bKeep);
 
 private:
    void CreateTuxtureYuv(int Width, int Height);
@@ -82,6 +85,8 @@ private:
    GLfloat m_vertexVertices[20];
 
    QOpenGLBuffer vbo;
+
+   bool m_KeepAspect;
 };
 
 class CGLRGBARender : public QOpenGLWidget
@@ -94,6 +99,7 @@ public:
 
     void PlayOneFrame(unsigned char* RgbData, int LineSize, int Width, int Height);
     void ResetDisplay();
+    void SetKeepAspect(bool bKeep);
 
 private:
     int ClearBuf();
@@ -113,6 +119,7 @@ private:
 
     uchar* m_RgbBuf;
     QMutex m_mutex;
+    bool m_KeepAspect;
 };
 
 #endif // QVIDEORENDER_H

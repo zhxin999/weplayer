@@ -99,6 +99,16 @@ int DlgOption::GetHardAccelMode()
     return 0;
 }
 
+void DlgOption::SetKeepAspect(bool bKeep)
+{
+    ui->chkKeepAspect->setChecked(bKeep);;
+}
+
+bool DlgOption::GetKeepAspect()
+{
+    return ui->chkKeepAspect->isChecked();
+}
+
 void DlgOption::on_lblSourceCode_linkActivated(const QString &link)
 {
     QDesktopServices::openUrl(QUrl(link));

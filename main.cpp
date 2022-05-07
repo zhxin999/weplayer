@@ -12,16 +12,6 @@
 #include "anLogs.h"
 #include "QWePlayer.h"
 
-#ifdef AV_OS_WIN32
-#ifdef QT_NO_DEBUG
-#else
-//#include "vld.h"
-#endif
-#endif
-
-#ifdef AV_OS_WIN32
-#pragma comment(lib, "ws2_32.lib")
-#endif
 
 CWePlayerCfg* gPlayCfgData;
 
@@ -102,7 +92,7 @@ int AnLogCallback(int Type, const char* data, int dataLen)
 
     if (data)
     {
-#ifdef AV_OS_WIN32v
+#ifdef AV_OS_WIN32
        qDebug() << data;
 #else
        printf("%s", data);
@@ -128,7 +118,7 @@ int main(int argc, char *argv[])
     //初始化网络
     WSADATA wsa_data;
     WSAStartup(0x0201, &wsa_data);
-
+    SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
 #else
     QFont font;
     font.setPointSize(10);
@@ -216,6 +206,7 @@ int main(int argc, char *argv[])
     AvLogTerminate();
 #ifdef AV_OS_WIN32
     WSACleanup();
+    SetThreadExecutionState(ES_CONTINUOUS);
 #else
 
 #endif

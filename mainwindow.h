@@ -9,6 +9,7 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QNetworkAccessManager>
+#include <QTimer>
 #include "QWePlayer.h"
 #include "anIncludes.h"
 #
@@ -56,6 +57,7 @@ protected:
 
 private slots:
     void on_btnClose_clicked();
+    void on_timer_Ticks();
 
     void on_btnMin_clicked();
     void on_btnOption_clicked();
@@ -86,6 +88,10 @@ private:
     bool m_enableNotify;
     QString m_NotifyAddr;
     int m_NotifyPort;
+
+    QTimer *m_timer;
+    int32_t m_ticks;
+    int32_t m_mouseHideLeft;
 };
 
 #endif // MAINWINDOW_H

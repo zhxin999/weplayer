@@ -4,9 +4,6 @@
 #include "anLogs.h"
 #include "anMisc.h"
 #include "anRingQueneLF.h"
-#ifdef AV_OS_WIN32
-#include <Windows.h>
-#endif
 
 #define ANRQ_ITEM_WRITE_AVAIL     0x00
 #define ANRQ_ITEM_READ_AVAIL      0x01

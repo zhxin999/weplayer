@@ -106,6 +106,10 @@ public:
 
     int SetHardAccelMode(int mode);
     int GetHardAccelMode();
+
+    void SetKeepAspect(bool bKeep);
+    bool GetKeepAspect();
+
     int SetFormatExt(QString format);
     int SetUserFormat(QString format);
     QString GetUserFormat();

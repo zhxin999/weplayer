@@ -179,7 +179,7 @@ border-color: rgb(255, 170, 255);</string>
            <enum>QTabWidget::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <widget class="QWidget" name="tabPlayer">
            <property name="sizePolicy">
@@ -247,6 +247,23 @@ QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
             </property>
             <property name="text">
              <string>硬件加速渲染(重启生效)</string>
+            </property>
+           </widget>
+           <widget class="QCheckBox" name="chkKeepAspect">
+            <property name="geometry">
+             <rect>
+              <x>40</x>
+              <y>70</y>
+              <width>181</width>
+              <height>16</height>
+             </rect>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QCheckBox{background-color: rgba(0, 0, 0, 0);color:#F0F0F0}
+QCheckBox:hover{ background-color: rgba(0, 0, 0, 0);color:#1DB1EA;}</string>
+            </property>
+            <property name="text">
+             <string>等比例画面</string>
             </property>
            </widget>
           </widget>

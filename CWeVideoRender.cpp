@@ -16,7 +16,7 @@ CSoftRgbRender::CSoftRgbRender(QWidget *parent):QWidget(parent)
 {
     m_RenderImage = NULL;
     m_RenderData = NULL;
-
+    m_KeepAspect = true;
     connect(this, SIGNAL(NotifyUIMsg(int)), this, SLOT(on_notify_ui(int)));
 
     //鼠标穿透
@@ -103,6 +103,11 @@ void CSoftRgbRender::ResetDisplay()
 
     emit NotifyUIMsg(0);
 }
+void CSoftRgbRender::SetKeepAspect(bool bKeep)
+{
+    m_KeepAspect = bKeep;
+    update();
+}
 
 void CSoftRgbRender::on_notify_ui(int MsgCode)
 {
@@ -125,31 +130,38 @@ void CSoftRgbRender::paintEvent(QPaintEvent* Evt)
     }
     else
     {
-        int picWidth = m_RenderImage->width();
-        int picHeight = m_RenderImage->height();
-        int width = this->width();
-        int height = this->height();
-
-        if ((picWidth > 0) && (picHeight > 0))
+        if (m_KeepAspect)
         {
-            int PaintHeight = (width * picHeight)/picWidth;
+            int picWidth = m_RenderImage->width();
+            int picHeight = m_RenderImage->height();
+            int width = this->width();
+            int height = this->height();
 
-            if (PaintHeight > height)
+            if ((picWidth > 0) && (picHeight > 0))
             {
-                int PaintWidth = (height * picWidth)/picHeight;
-                //左右黑边
-                paint.fillRect(0, 0, (width - PaintWidth)/2, height, Qt::black);
-                paint.fillRect(width - (width - PaintWidth)/2, 0, (width - PaintWidth)/2, height, Qt::black);
-                paint.drawImage(QRect((width - PaintWidth)/2, 0, PaintWidth, height), *m_RenderImage, m_RenderImage->rect());
+                int PaintHeight = (width * picHeight)/picWidth;
 
+                if (PaintHeight > height)
+                {
+                    int PaintWidth = (height * picWidth)/picHeight;
+                    //左右黑边
+                    paint.fillRect(0, 0, (width - PaintWidth)/2, height, Qt::black);
+                    paint.fillRect(width - (width - PaintWidth)/2, 0, (width - PaintWidth)/2, height, Qt::black);
+                    paint.drawImage(QRect((width - PaintWidth)/2, 0, PaintWidth, height), *m_RenderImage, m_RenderImage->rect());
+
+                }
+                else
+                {
+                    //上下黑边
+                    paint.fillRect(0, 0, width, (height - PaintHeight)/2, Qt::black);
+                    paint.fillRect(0, height - (height - PaintHeight)/2, width, (height - PaintHeight)/2, Qt::black);
+                    paint.drawImage(QRect(0, (height - PaintHeight)/2, width, PaintHeight), *m_RenderImage, m_RenderImage->rect());
+                }
             }
-            else
-            {
-                //上下黑边
-                paint.fillRect(0, 0, width, (height - PaintHeight)/2, Qt::black);
-                paint.fillRect(0, height - (height - PaintHeight)/2, width, (height - PaintHeight)/2, Qt::black);
-                paint.drawImage(QRect(0, (height - PaintHeight)/2, width, PaintHeight), *m_RenderImage, m_RenderImage->rect());
-            }
+        }
+        else
+        {
+            paint.drawImage(rc, *m_RenderImage, m_RenderImage->rect());
         }
     }
     m_mutex.unlock();
@@ -168,7 +180,7 @@ CGLI420Render::CGLI420Render(QWidget *parent) :QOpenGLWidget(parent)
    m_nVideoH = 0;
    m_nVideoW = 0;
    m_pBufYuv420p_Len = 0;
-
+   m_KeepAspect = true;
    //鼠标穿透
     //this->setAttribute(Qt::WA_TranslucentBackground, true);
     this->setAttribute(Qt::WA_TransparentForMouseEvents,true);
@@ -222,6 +234,17 @@ void CGLI420Render::ResetDisplay()
     m_mutex.unlock();
 
     emit NotifyUIMsg(0);
+}
+
+void CGLI420Render::SetKeepAspect(bool bKeep)
+{
+    if (m_KeepAspect != bKeep)
+    {
+        m_KeepAspect = bKeep;
+        DestoryTuxtureYuv();
+        update();
+    }
+
 }
 
 void CGLI420Render::PlayOneFrame(unsigned char* YData, int YPitch, unsigned char* UData, int UPitch, unsigned char* VData, int VPitch, int Width, int Height)
@@ -395,52 +418,68 @@ void CGLI420Render::resizeGL(int w, int h)
 
    if ((m_nVideoH>0)&&(m_nVideoW>0))
    {
-       int width = w;
-       int height = h;
-       int PaintHeight = (width * m_nVideoH)/m_nVideoW;
-       if (PaintHeight > height)
+       if (m_KeepAspect)
        {
-           //左右黑边
-           GLfloat xValue;
-           int PaintWidth = (height * m_nVideoW)/m_nVideoH;
+           int width = w;
+           int height = h;
+           int PaintHeight = (width * m_nVideoH)/m_nVideoW;
+           if (PaintHeight > height)
+           {
+               //左右黑边
+               GLfloat xValue;
+               int PaintWidth = (height * m_nVideoW)/m_nVideoH;
 
-           xValue = (GLfloat)PaintWidth / (GLfloat)width;
+               xValue = (GLfloat)PaintWidth / (GLfloat)width;
 
-           m_vertexVertices[0] = -xValue;
-           m_vertexVertices[1] = -1.0;
+               m_vertexVertices[0] = -xValue;
+               m_vertexVertices[1] = -1.0;
 
-           m_vertexVertices[5] = xValue;
-           m_vertexVertices[6] = -1.0;
+               m_vertexVertices[5] = xValue;
+               m_vertexVertices[6] = -1.0;
 
-           m_vertexVertices[10] = xValue;
-           m_vertexVertices[11] = 1.0;
+               m_vertexVertices[10] = xValue;
+               m_vertexVertices[11] = 1.0;
 
-           m_vertexVertices[15] = -xValue;
-           m_vertexVertices[16] = 1.0;
+               m_vertexVertices[15] = -xValue;
+               m_vertexVertices[16] = 1.0;
+           }
+           else
+           {
+               //上下黑边
+               GLfloat xValue;
+
+               xValue = (GLfloat)PaintHeight / (GLfloat)height;
+
+               m_vertexVertices[0] = -1.0;
+               m_vertexVertices[1] = -xValue;
+
+               m_vertexVertices[5] = 1.0;
+               m_vertexVertices[6] = -xValue;
+
+               m_vertexVertices[10] = 1.0;
+               m_vertexVertices[11] = xValue;
+
+               m_vertexVertices[15] = -1.0;
+               m_vertexVertices[16] = xValue;
+           }
        }
        else
        {
-           //上下黑边
-           GLfloat xValue;
-
-           xValue = (GLfloat)PaintHeight / (GLfloat)height;
-
            m_vertexVertices[0] = -1.0;
-           m_vertexVertices[1] = -xValue;
+           m_vertexVertices[1] = -1.0;
 
            m_vertexVertices[5] = 1.0;
-           m_vertexVertices[6] = -xValue;
+           m_vertexVertices[6] = -1.0;
 
            m_vertexVertices[10] = 1.0;
-           m_vertexVertices[11] = xValue;
+           m_vertexVertices[11] = 1.0;
 
            m_vertexVertices[15] = -1.0;
-           m_vertexVertices[16] = xValue;
+           m_vertexVertices[16] = 1.0;
        }
 
        vbo.write(0, m_vertexVertices, sizeof(m_vertexVertices));
    }
-
 
    //设置视口
    glViewport(0, 0, w, h);
@@ -468,47 +507,65 @@ void CGLI420Render::CreateTuxtureYuv(int Width, int Height)
     m_pTextureU->allocateStorage(QOpenGLTexture::Red, QOpenGLTexture::UInt8);
     m_pTextureV->allocateStorage(QOpenGLTexture::Red, QOpenGLTexture::UInt8);
 
-    int winSizeX = this->width();
-    int winSizeY = this->height();
-    int PaintHeight = (winSizeX * Height)/Width;
-    if (PaintHeight > winSizeY)
+    if (m_KeepAspect)
     {
-        //左右黑边
-        GLfloat xValue;
-        int PaintWidth = (winSizeY * Width)/Height;
+        int winSizeX = this->width();
+        int winSizeY = this->height();
+        int PaintHeight = (winSizeX * Height)/Width;
+        if (PaintHeight > winSizeY)
+        {
+            //左右黑边
+            GLfloat xValue;
+            int PaintWidth = (winSizeY * Width)/Height;
 
-        xValue = (GLfloat)PaintWidth / (GLfloat)winSizeX;
+            xValue = (GLfloat)PaintWidth / (GLfloat)winSizeX;
 
-        m_vertexVertices[0] = -xValue;
-        m_vertexVertices[1] = -1.0;
+            m_vertexVertices[0] = -xValue;
+            m_vertexVertices[1] = -1.0;
 
-        m_vertexVertices[5] = xValue;
-        m_vertexVertices[6] = -1.0;
+            m_vertexVertices[5] = xValue;
+            m_vertexVertices[6] = -1.0;
 
-        m_vertexVertices[10] = xValue;
-        m_vertexVertices[11] = 1.0;
+            m_vertexVertices[10] = xValue;
+            m_vertexVertices[11] = 1.0;
 
-        m_vertexVertices[15] = -xValue;
-        m_vertexVertices[16] = 1.0;
+            m_vertexVertices[15] = -xValue;
+            m_vertexVertices[16] = 1.0;
+        }
+        else
+        {
+            //上下黑边
+            GLfloat xValue;
+
+            xValue = (GLfloat)PaintHeight / (GLfloat)winSizeY;
+
+            m_vertexVertices[0] = -1.0;
+            m_vertexVertices[1] = -xValue;
+
+            m_vertexVertices[5] = 1.0;
+            m_vertexVertices[6] = -xValue;
+
+            m_vertexVertices[10] = 1.0;
+            m_vertexVertices[11] = xValue;
+
+            m_vertexVertices[15] = -1.0;
+            m_vertexVertices[16] = xValue;
+        }
+
     }
     else
     {
-        //上下黑边
-        GLfloat xValue;
-
-        xValue = (GLfloat)PaintHeight / (GLfloat)winSizeY;
-
         m_vertexVertices[0] = -1.0;
-        m_vertexVertices[1] = -xValue;
+        m_vertexVertices[1] = -1.0;
 
         m_vertexVertices[5] = 1.0;
-        m_vertexVertices[6] = -xValue;
+        m_vertexVertices[6] = -1.0;
 
         m_vertexVertices[10] = 1.0;
-        m_vertexVertices[11] = xValue;
+        m_vertexVertices[11] = 1.0;
 
         m_vertexVertices[15] = -1.0;
-        m_vertexVertices[16] = xValue;
+        m_vertexVertices[16] = 1.0;
     }
 
     vbo.write(0, m_vertexVertices, sizeof(m_vertexVertices));
@@ -659,36 +716,53 @@ void CGLRGBARender::ResetDisplay()
     m_mutex.unlock();
     emit NotifyUIMsg(0);
 }
+
+void CGLRGBARender::SetKeepAspect(bool bKeep)
+{
+    m_KeepAspect = bKeep;
+    update();
+}
+
 void CGLRGBARender::paintEvent(QPaintEvent *event)
 {
     m_mutex.lock();
     if (m_Image)
     {
-        int picWidth = m_Image->width();
-        int picHeight = m_Image->height();
-        int width = this->width();
-        int height = this->height();
-
-        int PaintHeight = (width * picHeight)/picWidth;
         QPainter painter;
         painter.begin(this);
 
-        if (PaintHeight > height)
+        if (m_KeepAspect)
         {
-            int PaintWidth = (height * picWidth)/picHeight;
-            //左右黑边
-            painter.fillRect(0, 0, (width - PaintWidth)/2, height, Qt::black);
-            painter.fillRect(width - (width - PaintWidth)/2, 0, (width - PaintWidth)/2, height, Qt::black);
-            painter.drawImage(QRect((width - PaintWidth)/2, 0, PaintWidth, height), *m_Image, m_Image->rect());
+            int picWidth = m_Image->width();
+            int picHeight = m_Image->height();
+            int width = this->width();
+            int height = this->height();
 
+            int PaintHeight = (width * picHeight)/picWidth;
+
+
+            if (PaintHeight > height)
+            {
+                int PaintWidth = (height * picWidth)/picHeight;
+                //左右黑边
+                painter.fillRect(0, 0, (width - PaintWidth)/2, height, Qt::black);
+                painter.fillRect(width - (width - PaintWidth)/2, 0, (width - PaintWidth)/2, height, Qt::black);
+                painter.drawImage(QRect((width - PaintWidth)/2, 0, PaintWidth, height), *m_Image, m_Image->rect());
+
+            }
+            else
+            {
+                //上下黑边
+                painter.fillRect(0, 0, width, (height - PaintHeight)/2, Qt::black);
+                painter.fillRect(0, height - (height - PaintHeight)/2, width, (height - PaintHeight)/2, Qt::black);
+                painter.drawImage(QRect(0, (height - PaintHeight)/2, width, PaintHeight), *m_Image, m_Image->rect());
+            }
         }
         else
         {
-            //上下黑边
-            painter.fillRect(0, 0, width, (height - PaintHeight)/2, Qt::black);
-            painter.fillRect(0, height - (height - PaintHeight)/2, width, (height - PaintHeight)/2, Qt::black);
-            painter.drawImage(QRect(0, (height - PaintHeight)/2, width, PaintHeight), *m_Image, m_Image->rect());
+            painter.drawImage(this->rect(), *m_Image, m_Image->rect());
         }
+
 
         painter.end();
     }

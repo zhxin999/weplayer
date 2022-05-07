@@ -1,9 +1,5 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
-#ifdef AV_OS_WIN32
-#include <windows.h>
-#include <windowsx.h>
-#endif
 #include <QMouseEvent>
 #include <QHostAddress>
 #include "dlgoption.h"
@@ -25,12 +21,14 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+/*
 #ifdef AV_OS_WIN32
     setWindowFlags(Qt::FramelessWindowHint|Qt::CustomizeWindowHint);
 #else
     setWindowFlags(Qt::FramelessWindowHint);
-#endif
-    //setMouseTracking(true); //开启鼠标追踪
+#endif*/
+
+    setWindowFlags(Qt::FramelessWindowHint|Qt::CustomizeWindowHint);
 
     //保证能移动，要鼠标穿透
     ui->lblTitle->setAttribute(Qt::WA_TranslucentBackground, true);
@@ -56,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent) :
 
     this->installEventFilter(this);
     ui->frmTitleBar->installEventFilter(this);
+
+    ui->videoWidget->installEventFilter(this);
 
     QString strCfgFile  = CWePlayerCfg::GetCfgDir() + QString("/player_one_cfg.xml");
 
@@ -95,6 +95,12 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(m_NetManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(on_http_replay(QNetworkReply*)));
 
     checkNewVersion();
+
+    m_ticks = 0;
+    //开启一个定时器
+    m_timer=new QTimer(this);
+    connect(m_timer,SIGNAL(timeout()),this,SLOT(on_timer_Ticks()));
+    m_timer->start(1000);
 }
 
 MainWindow::~MainWindow()
@@ -111,6 +117,32 @@ MainWindow::~MainWindow()
         m_AppTalkBuf = NULL;
     }
     delete ui;
+}
+
+void MainWindow::on_timer_Ticks()
+{
+    m_ticks++;
+
+    if (this->isFullScreen())
+    {
+        if (m_mouseHideLeft > 0)
+        {
+            m_mouseHideLeft--;
+            if (m_mouseHideLeft == 0)
+            {
+                this->setCursor(Qt::BlankCursor);
+            }
+        }
+    }
+
+    if ((m_ticks % 60) == 0)
+    {
+#ifdef AV_OS_WIN32
+
+#else
+       //XScreenSaverSuspend();
+#endif
+    }
 }
 
 void MainWindow::StartTalker(QString addr, int port)
@@ -378,6 +410,15 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
                 }
             }
         }
+
+        if (this->isFullScreen())
+        {
+            if (m_mouseHideLeft <= 0)
+            {
+                this->setCursor(Qt::ArrowCursor);
+            }
+        }
+        m_mouseHideLeft = 15;
     }
     else if(event->type()==QEvent::MouseButtonDblClick)
     {
@@ -431,85 +472,6 @@ void MainWindow::on_btnMax_clicked()
            "QPushButton#btnMax:pressed{border-image:url(:/resource/restore.png);}");
     }
 }
-#if 0
-#ifdef AV_OS_WIN32
-bool MainWindow::nativeEvent(const QByteArray &eventType, void *message, long *result)
-{
-    MSG* msg = (MSG*)message;
-    switch(msg->message)
-    {
-        case WM_NCHITTEST:
-        {
-            if (this->isFullScreen())
-                break;
-
-            int xPos = GET_X_LPARAM(msg->lParam) - this->frameGeometry().x();
-            int yPos = GET_Y_LPARAM(msg->lParam) - this->frameGeometry().y();
-
-            if((xPos > 0 && xPos < 8) && (yPos > 0) && (yPos < 8))
-            {
-                *result = HTTOPLEFT;
-                return true;
-            }
-            else if((xPos > 0 && xPos < 8) && (yPos > this->height() - 8) && (yPos < this->height()))
-            {
-                *result = HTBOTTOMLEFT;
-                return true;
-            }
-            else if((xPos > this->width() - 8) && (xPos < this->width()) && (yPos > 0) && (yPos < 8))
-            {
-                *result = HTTOPRIGHT;
-                return true;
-            }
-            else if((xPos > this->width() - 8) && (xPos < this->width()) && (yPos > this->height() - 8) && (yPos < this->height()))
-            {
-                *result = HTBOTTOMRIGHT;
-                return true;
-            }
-            else if(xPos > 0 && xPos < 8)
-            {
-                *result = HTLEFT;
-                return true;
-            }
-            else if(xPos > (this->width() - 8) && xPos < (this->width() - 0))
-            {
-                *result = HTRIGHT;
-                return true;
-            }
-            else if(yPos > 0 && yPos < 8)
-            {
-                *result = HTTOP;
-                return true;
-            }
-            else if(yPos > (this->height() - 8) && yPos < (this->height() - 0))
-            {
-                *result = HTBOTTOM;
-                return true;
-            }
-            else
-            {
-                /*if ((yPos < TITLE_BAR_HEIGHT) && (ui->frmTitleBar->isVisible()))
-                {
-                    QWidget* widget = this->childAt(xPos, yPos);
-                    if (widget)
-                    {
-                        if (widget->metaObject()->className() == QStringLiteral("QPushButton"))
-                        {
-                            return false;
-                        }
-                    }
-                    *result = HTCAPTION;
-                    return true;
-                }*/
-            }
-            break;
-        }
-    }
-
-    return false;
-}
-#endif
-#endif
 void MainWindow::ToggleFullScreen()
 {
     if (this->isFullScreen())
@@ -523,6 +485,8 @@ void MainWindow::ToggleFullScreen()
         ui->frmTitleBar->hide();
         this->showFullScreen();
         ui->videoWidget->ToggleFullScreen(true);
+
+        m_mouseHideLeft = 15;
     }
 
     //强制重新布局，要不然在扩展屏幕上会有问题
@@ -627,11 +591,13 @@ void MainWindow::on_btnOption_clicked()
 {
     DlgOption dlgOption(NULL);
     int render_mode;
+    bool keep_aspect = ui->videoWidget->GetKeepAspect();
 
     render_mode = ui->videoWidget->GetRenderMode();
     dlgOption.SetHardAccelMode(render_mode);
     dlgOption.SetFormatExt(gPlayCfgData->GetNodeAttribute("DefaultConfig/Player/SupportFile", "extlist", ""));
 
+    dlgOption.SetKeepAspect(keep_aspect);
     dlgOption.SetUserFormat(gPlayCfgData->GetNodeAttribute("UserConfig/Format", "extlist", ""));
 
     dlgOption.move(this->x() + (this->width() - dlgOption.width()) / 2, this->y() + (this->height() - dlgOption.height()) / 2);
@@ -642,6 +608,8 @@ void MainWindow::on_btnOption_clicked()
         QString usrExtList = dlgOption.GetUserFormat();
 
         gPlayCfgData->SetNodeAttribute("UserConfig/Format", "extlist", usrExtList);
+
+        ui->videoWidget->SetKeepAspect(dlgOption.GetKeepAspect());
 
         ui->videoWidget->SetRenderModeCfg(mode);
         QString path("");

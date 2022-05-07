@@ -1,14 +1,9 @@
 ﻿#ifndef __AUDIO_DEVS_H__
 #define __AUDIO_DEVS_H__
 
+#include "uv.h"
 #include <stdio.h>
 #include <time.h>
-#ifdef AV_OS_WIN32
-#include <Windows.h>
-#else
-#include <pthread.h>
-#include <unistd.h>
-#endif
 #include <inttypes.h>
 #include "portaudio.h"
 extern "C"
@@ -25,13 +20,9 @@ public:
    PlaybackDev();
    ~PlaybackDev();
 
-   int IsDeviceSupportFmt(int device, int channel, int samplerate);
-
-#ifdef AV_OS_WIN32
-   static DWORD WINAPI Thread_Playback(LPVOID p);
-#else
-    static void* Thread_Playback(void* p);
-#endif
+   static int GetDeviceFmt(int device, int &channel, int &samplerate);
+   static int IsDeviceSupportFmt(int device, int channel, int samplerate);
+   static void ThreadPlayback(void* p);
 
    void SetOutputFormat(int channels, int samplerate);
    void SetMaxDelayMs (int value);
@@ -47,25 +38,24 @@ private:
     int openAudioDev(PaStream **stream);
     int closeAudioDev(PaStream *stream);
     int pushPlayData(unsigned char * pData, int size);
+    int readPlayData(unsigned char * pData, int size);
 
 private:
-   int m_DevIdx;
+   int m_devIdx;
    int m_channels;
    int m_samplerate;
-   struct SwrContext *m_AudConvertCtx;
+   struct SwrContext *m_audConvertCtx;
    unsigned char* m_TmpBuf;
 
-   unsigned char* m_AudioBuf;
-   int m_AudioBufMax;
-   int m_AudioBufAvail;
-#ifdef AV_OS_WIN32
-   CRITICAL_SECTION m_lock;
-   HANDLE m_Task;
-#else
-    pthread_mutex_t m_lock;
-    pthread_t m_Task;
-#endif
+   unsigned char* m_audioBuf;
+   long m_audioBufMax;
+   long m_audioBufAvail;
+   long m_audioBufWp;
+   long m_audioBufRp;
 
+   uv_thread_t m_Task;
+
+   int m_flushFlag;
    int TaskLoop;
    int m_IsPaused;
    int m_outChannel;
@@ -73,6 +63,8 @@ private:
 
    //最大缓存音频先关参数, 1000/m_maxCacheFactor = x (ms)
    int m_maxCacheInMs;
+
+   FILE* m_fileDebug;
 };
 
 
