@@ -126,7 +126,6 @@ int main(int argc, char *argv[])
     a.setFont(font);
 #endif
 
-    //每一台机器都生成一个uuid比较容易在后台判断装机数量
     {
         QString str_uuid = gPlayCfgData->GetNodeAttribute("UserConfig/UUID", "value", "");
         if (str_uuid.length() < 1)
@@ -138,8 +137,6 @@ int main(int argc, char *argv[])
         }
 
     }
-
-
 
     //作用域确保资源释放
     {

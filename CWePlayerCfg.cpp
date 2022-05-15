@@ -325,11 +325,38 @@ int CWePlayerCfg::SaveUserCfg()
     return 0;
 }
 
-bool CWePlayerCfg::IsSupportVideoFile(QString& fileName)
+bool CWePlayerCfg::checkSupport(QString& extLsit, QString& fileName)
 {
     QString endfix = fileName.mid(fileName.lastIndexOf("."));
     QStringList list;
 
+    list = extLsit.split(";");
+
+    int i = 0;
+    for (i = 0; i < list.size(); i++)
+    {
+        //是后缀的
+        if (list[i].startsWith('.'))
+        {
+            if (endfix.toLower() == list[i])
+            {
+                return true;
+            }
+        }//判断前缀
+        else if (list[i].endsWith("://"))
+        {
+            if (fileName.startsWith(list[i]))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool CWePlayerCfg::IsSupportVideoFile(QString& fileName)
+{
     QString extList;
     m_DefaultCfg.GetNodeAttribute("DefaultConfig/Player/SupportFile", "extlist",extList);
 
@@ -340,31 +367,16 @@ bool CWePlayerCfg::IsSupportVideoFile(QString& fileName)
     {
         extList = ".mp4;.ts;.flv;.mkv;.mp3;.wav;";
     }
-    list = extList.split(";");
 
-    int i = 0;
-    for (i = 0; i < list.size(); i++)
+    if (checkSupport(extList, fileName))
     {
-        if ((list[i].length() > 2) && (list[i].startsWith('.')))
-        {
-            if (endfix.toLower() == list[i])
-            {
-                return true;
-            }
-        }
+        return true;
     }
 
-    //判断一下用户定义的后缀名
-    list = userExtList.split(";");
-    for (i = 0; i < list.size(); i++)
+    if (checkSupport(userExtList, fileName))
     {
-        if ((list[i].length() > 2) && (list[i].startsWith('.')))
-        {
-            if (endfix.toLower() == list[i])
-            {
-                return true;
-            }
-        }
+        return true;
     }
+
     return false;
 }

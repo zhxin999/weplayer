@@ -89,7 +89,6 @@ SOURCES += \
     CWeListWidget.cpp \
     CWeSlider.cpp \
     CWePlayerCfg.cpp \
-    player/anAudioDevice.cpp \
     player/anPlayer.cpp \
     util/anListObject.cpp \
     util/anLogs.cpp \
@@ -108,7 +107,6 @@ HEADERS += \
     CWeWidgetMisc.h \
     CWePlayerCfg.h \
     anIncludes.h \
-    player/anAudioDevice.h \
     player/anPlayer.h \
     util/anListObject.h \
     util/anListObject_def.h \

@@ -94,7 +94,10 @@ MainWindow::MainWindow(QWidget *parent) :
     m_NetManager = new QNetworkAccessManager(this);;
     connect(m_NetManager, SIGNAL(finished(QNetworkReply*)), this, SLOT(on_http_replay(QNetworkReply*)));
 
+#ifndef QT_DEBUG
+    //debug版本不要查询升级，这个就是我自己调试的
     checkNewVersion();
+#endif
 
     m_ticks = 0;
     //开启一个定时器
@@ -206,7 +209,6 @@ void MainWindow::resizeEvent(QResizeEvent *evt)
     //m_BorderTop->bri
     ui->frmTitleBar->setGeometry(0, 0, this->width(), titlebar_height);
     ui->videoWidget->setGeometry(0, titlebar_height, this->width(), this->height() - titlebar_height);
-
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)

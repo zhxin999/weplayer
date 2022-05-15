@@ -7,10 +7,10 @@
 #include "anPlayer.h"
 #include "anRingQueneLF.h"
 #include "anListObject.h"
-#include "anAudioDevice.h"
 
 #ifdef _WIN32
 #include <Windows.h>
+#include <timeapi.h>
 #endif
 
 

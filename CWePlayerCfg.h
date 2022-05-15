@@ -45,7 +45,7 @@ public:
     bool IsSupportVideoFile(QString& fileName);
 
 private:
-
+    bool checkSupport(QString& extLsit, QString& fileName);
 
 private:
     //程序路径
