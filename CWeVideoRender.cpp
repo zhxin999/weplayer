@@ -121,7 +121,7 @@ void CSoftRgbRender::paintEvent(QPaintEvent* Evt)
     QRect rc = this->rect();
     paint.setPen(QColor(0, 0, 0, 0));
     paint.setBrush(QBrush(QColor(0, 0, 0, 0)));
-
+    Q_UNUSED(Evt);
     m_mutex.lock();
     if (m_RenderImage == NULL)
     {
@@ -189,6 +189,7 @@ CGLI420Render::CGLI420Render(QWidget *parent) :QOpenGLWidget(parent)
 
 void CGLI420Render::on_notify_ui(int MsgCode)
 {
+   Q_UNUSED(MsgCode);
    update();
 }
 
@@ -725,6 +726,8 @@ void CGLRGBARender::SetKeepAspect(bool bKeep)
 
 void CGLRGBARender::paintEvent(QPaintEvent *event)
 {
+    Q_UNUSED(event);
+
     m_mutex.lock();
     if (m_Image)
     {
@@ -794,6 +797,7 @@ int CGLRGBARender::ClearBuf()
 }
 int CGLRGBARender::NewBuf(unsigned char* data, int width, int height, int linesize)
 {
+    Q_UNUSED(data);
     ClearBuf();
 
     m_RgbBuf = (uchar *)malloc(linesize * height);

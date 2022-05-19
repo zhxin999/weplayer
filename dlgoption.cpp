@@ -109,6 +109,16 @@ bool DlgOption::GetKeepAspect()
     return ui->chkKeepAspect->isChecked();
 }
 
+void DlgOption::EnableRightClick(bool bEnable)
+{
+     ui->chkEnableRightClick->setChecked(bEnable);
+}
+
+bool DlgOption::GetEnableRightClick()
+{
+    return ui->chkEnableRightClick->isChecked();
+}
+
 void DlgOption::on_lblSourceCode_linkActivated(const QString &link)
 {
     QDesktopServices::openUrl(QUrl(link));

@@ -10,6 +10,7 @@
 #include <QObject>
 #include <QDomComment>
 #include <QJsonArray>
+#include <QMenu>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set("utf-8")
@@ -19,6 +20,11 @@
 #define TOOL_BAR_HEIGHT             54
 #define PLAYPROCESS_BAR_HEIGHT      12
 #define PLAYLIST_BAR_WIDTH          200
+
+#define MENU_STYLE "QMenu{ background:rgb(255,255,255);border:none;}"\
+                   "QMenu::item{padding:6px 20px;color:rgb(51,51,51);font-size:14px;}"\
+                   "QMenu::item:hover{background-color:#00B1EA;}"\
+                   "QMenu::item:selected{background-color:#409CE1;}"\
 
 enum
 {
@@ -94,6 +100,7 @@ QWePlayer::QWePlayer(QWidget *parent) :
     m_GlRGBARender = NULL;
     m_SoftRgbRender = NULL;
     m_KeepAspect = true;
+    m_enableRightClick = false;
 
     SetRenderMode(RENDER_MODE_GLI420);
     
@@ -176,6 +183,25 @@ QWePlayer::QWePlayer(QWidget *parent) :
                                   QPushButton:hover{ color: #00B1EA; }\
                                   QPushButton:pressed{ color: rgb(167, 167, 167); }");
 
+    ShowRendor(false);
+
+    //不允许弹出播放列表
+    if (m_Skin.PlayListMode() == WePlayerSkin::DISP_MODE_HIDE)
+    {
+        ui->frmPlayList->hide();
+        ui->btnShowPlayList->hide();
+    }
+    else if (m_Skin.PlayListMode() == WePlayerSkin::DISP_MODE_SHOW)
+    {
+        ui->frmPlayList->show();
+        ui->btnShowPlayList->hide();
+    }
+
+    if (m_Skin.ToolbarMode() == WePlayerSkin::DISP_MODE_HIDE)
+    {
+        ui->frmPlayCtrlBar->hide();
+        m_Slider->hide();
+    }
 }
 
 QWePlayer::~QWePlayer()
@@ -202,7 +228,8 @@ QWePlayer::~QWePlayer()
 int QWePlayer::ANPlayer_Video_Callback(ANPlayer_h pPlayer, AVFrame* frame, int64_t pts, void* UserData)
 {
     QWePlayer* pObjs = (QWePlayer*)UserData;
-
+    Q_UNUSED(pts);
+    Q_UNUSED(pPlayer);
    // return 0;
 
     if (pObjs)
@@ -370,7 +397,8 @@ int QWePlayer::ANPlayer_Event_Callback(ANPlayer_h pPlayer, ANPLAYER_EVENT_CODE E
 int QWePlayer::ANPlayer_Audio_Callback(ANPlayer_h pPlayer, uint8_t* pData, int DataLen, int64_t pts, void* UserData)
 {
     QWePlayer* pObjs = (QWePlayer*)UserData;
-
+    Q_UNUSED(pts);
+    Q_UNUSED(pPlayer);
     if (pObjs)
     {
        if (pObjs->m_IsMuteAudio)
@@ -398,8 +426,11 @@ void QWePlayer::SetSkinMode(int mode)
     }
     else if (m_PlayerMode == PLAYER_MODE_FULL)
     {
-        ui->frmPlayCtrlBar->show();
-        m_Slider->show();
+        if (m_Skin.ToolbarMode() != WePlayerSkin::DISP_MODE_HIDE)
+        {
+            ui->frmPlayCtrlBar->show();
+            m_Slider->show();
+        }
     }
     else
     {
@@ -416,14 +447,34 @@ void QWePlayer::ToggleFullScreen(bool bTrue)
     {
         if (bTrue)
         {
-            ui->frmPlayCtrlBar->hide();
-            ui->frmPlayList->hide();
-            m_Slider->hide();
+            if (m_Skin.ToolbarMode() == WePlayerSkin::DISP_MODE_AUTO)
+            {
+                ui->frmPlayCtrlBar->hide();
+                m_Slider->hide();
+            }
+
+            if (m_Skin.PlayListMode() == WePlayerSkin::DISP_MODE_AUTO)
+            {
+                ui->frmPlayList->hide();
+            }
         }
         else
         {
-            ui->frmPlayCtrlBar->show();
-            m_Slider->show();
+            if (m_Skin.ToolbarMode() == WePlayerSkin::DISP_MODE_HIDE)
+            {
+                ui->frmPlayCtrlBar->hide();
+                m_Slider->hide();
+            }
+            else
+            {
+                ui->frmPlayCtrlBar->show();
+                m_Slider->show();
+            }
+
+            if (m_Skin.PlayListMode() != WePlayerSkin::DISP_MODE_HIDE)
+            {
+                ui->frmPlayList->show();
+            }
         }
     }
 
@@ -492,6 +543,8 @@ void QWePlayer::SetRenderMode(int mode)
         //不处理鼠标事件，保证能够拖拽
         m_SoftRgbRender->setAttribute(Qt::WA_TransparentForMouseEvents,false);
     }
+
+    ShowRendor(false);
 }
 
 int QWePlayer::GetRenderMode()
@@ -544,9 +597,22 @@ bool QWePlayer::GetKeepAspect()
     return m_KeepAspect;
 }
 
+void QWePlayer::SetRightClick(bool bEnable)
+{
+    m_enableRightClick = bEnable;
+}
+
+bool QWePlayer::GetRightClick()
+{
+    return m_enableRightClick;
+}
+
 void QWePlayer::UserResize()
 {
     int toolbar_height = TOOL_BAR_HEIGHT;
+    int border = m_Skin.BorderSize();
+    QRect rcClient(border, border, this->width() - border*2, this->height() - border*2);
+    int y = 0;
 
     //m_GlI420Render->raise();
     ui->frmPlayCtrlBar->raise();
@@ -558,37 +624,41 @@ void QWePlayer::UserResize()
     if (ui->frmPlayCtrlBar->isHidden())
         toolbar_height = 0;
 
-    m_Slider->setGeometry(0, this->height() - toolbar_height - PLAYPROCESS_BAR_HEIGHT/2, this->width(), PLAYPROCESS_BAR_HEIGHT);
-    ui->frmPlayCtrlBar->setGeometry(0, this->height() - toolbar_height, this->width(), toolbar_height);
-    ui->frmPlayList->setGeometry(0, 0, PLAYLIST_BAR_WIDTH, this->height() - toolbar_height);
-
     if (m_GlI420Render)
     {
-        m_GlI420Render->setGeometry(0, 0, this->width(), this->height() - toolbar_height);
+        m_GlI420Render->setGeometry(rcClient.left(), rcClient.top(), rcClient.width(), rcClient.height() - toolbar_height);
     }
     else if (m_GlRGBARender)
     {
-        m_GlRGBARender->setGeometry(0, 0, this->width(), this->height() - toolbar_height);
+        m_GlRGBARender->setGeometry(rcClient.left(), rcClient.top(), rcClient.width(), rcClient.height() - toolbar_height);
     }
     else if (m_SoftRgbRender)
     {
-        m_SoftRgbRender->setGeometry(0, 0, this->width(), this->height() - toolbar_height);
+        m_SoftRgbRender->setGeometry(rcClient.left(), rcClient.top(), rcClient.width(), rcClient.height() - toolbar_height);
     }
+
+    y = this->height() - toolbar_height - border;
+
+    m_Slider->setGeometry(rcClient.left(), y - PLAYPROCESS_BAR_HEIGHT/2, rcClient.width(), PLAYPROCESS_BAR_HEIGHT);
+    ui->frmPlayCtrlBar->setGeometry(rcClient.left(), y, rcClient.width(), toolbar_height);
+    ui->frmPlayList->setGeometry(rcClient.left(), rcClient.top(), PLAYLIST_BAR_WIDTH, y + border);
 
     if (ui->frmPlayList->isHidden())
     {
-        m_WarnningTopLeft->setGeometry(0, 0, m_WarnningBottom->width(), m_WarnningTopLeft->height());
-        m_WarnningBottom->setGeometry(0, m_Slider->geometry().top() - GetScaledSize(30), m_WarnningBottom->width(), GetScaledSize(30));
+        m_WarnningTopLeft->setGeometry(rcClient.left(), rcClient.top(), m_WarnningBottom->width(), m_WarnningTopLeft->height());
+        m_WarnningBottom->setGeometry(rcClient.left(), m_Slider->geometry().top() - GetScaledSize(30), m_WarnningBottom->width(), GetScaledSize(30));
     }
     else
     {
-        m_WarnningTopLeft->setGeometry(ui->frmPlayList->geometry().right(), 0, m_WarnningTopLeft->width(), m_WarnningTopLeft->height());
+        m_WarnningTopLeft->setGeometry(ui->frmPlayList->geometry().right(), rcClient.top(), m_WarnningTopLeft->width(), m_WarnningTopLeft->height());
         m_WarnningBottom->setGeometry(ui->frmPlayList->geometry().right(), m_Slider->geometry().top() - GetScaledSize(30), m_WarnningBottom->width(), GetScaledSize(30));
     }
 }
 
 void QWePlayer::resizeEvent(QResizeEvent *evt)
 {
+    Q_UNUSED(evt);
+
     UserResize();
 }
 bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
@@ -600,6 +670,29 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
         if (watched == this)
         {
             emit sgnlPlayerMsg(PLAYER_MSG_VIDEO_DBCLICK, 0, nullptr, NULL);
+        }
+    }
+    else if(evtType ==QEvent::MouseButtonPress)
+    {
+        if ((watched == this) && m_enableRightClick)
+        {
+            QMouseEvent *evtMouse = static_cast<QMouseEvent *>(event);
+            if (evtMouse->button() == Qt::RightButton)
+            {
+                QMenu menu;
+                QPoint pt1 = evtMouse->pos();
+                QPoint pt = this->mapToGlobal(pt1);
+
+                QAction *actAddFile = menu.addAction("添加文件");
+                QAction *actOSD = menu.addAction("自定义OSD");
+                QAction *actDetail = menu.addAction("媒体信息");
+                menu.setStyleSheet(MENU_STYLE);
+                QAction *selectedAction = menu.exec(pt);
+                if (selectedAction)
+                {
+
+                }
+            }
         }
     }
     else if(evtType==QEvent::DragEnter)
@@ -668,23 +761,26 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
     }
     else if(evtType == QEvent::Wheel)
     {
-        QWheelEvent  *evtMouse = static_cast<QWheelEvent  *>(event);
+        if (watched == ui->frmPlayCtrlBar)
+        {
+            QWheelEvent  *evtMouse = static_cast<QWheelEvent  *>(event);
 
-        if (evtMouse->angleDelta().y() > 0)
-        {
-            m_VolumeValue += 5;
-            if (m_VolumeValue > 100)
-                m_VolumeValue = 100;
+            if (evtMouse->angleDelta().y() > 0)
+            {
+                m_VolumeValue += 5;
+                if (m_VolumeValue > 100)
+                    m_VolumeValue = 100;
+            }
+            else
+            {
+                m_VolumeValue -= 5;
+                if (m_VolumeValue < 0)
+                    m_VolumeValue = 0;
+            }
+            ui->sliderVol->setValue(m_VolumeValue);
         }
-        else
-        {
-            m_VolumeValue -= 5;
-            if (m_VolumeValue < 0)
-                m_VolumeValue = 0;
-        }
-        ui->sliderVol->setValue(m_VolumeValue);
     }
-    else if(evtType == QEvent::KeyRelease)
+    else if ((evtType == QEvent::KeyRelease))
     {
         QKeyEvent *keyEvent = static_cast<QKeyEvent*>(event);
         int keycode = keyEvent->key();
@@ -695,10 +791,7 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
         }
         else if ((keycode == Qt::Key_Return))
         {
-            if (watched == this)
-            {
-                emit sgnlPlayerMsg(PLAYER_MSG_VIDEO_DBCLICK, 0, nullptr, NULL);
-            }
+            emit sgnlPlayerMsg(PLAYER_MSG_VIDEO_DBCLICK, 0, nullptr, NULL);
         }
         else if (keycode == Qt::Key_Up)
         {
@@ -709,9 +802,9 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
         }
         else if (keycode == Qt::Key_Down)
         {
-            m_VolumeValue += 5;
-            if (m_VolumeValue > 100)
-                m_VolumeValue = 100;
+            m_VolumeValue -= 5;
+            if (m_VolumeValue < 0)
+                m_VolumeValue = 0;
             ui->sliderVol->setValue(m_VolumeValue);
         }
         else if (keycode == Qt::Key_Right)
@@ -747,6 +840,29 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
     }
 
     return QWidget::eventFilter(watched,event);
+}
+
+void QWePlayer::paintEvent(QPaintEvent* evt)
+{
+    Q_UNUSED(evt);
+    QPainter paint(this);
+    QRect rc = this->rect();
+    int border = m_Skin.BorderSize();
+    if (border > 0)
+    {
+        paint.fillRect(QRect(0,0, rc.width(), border), m_Skin.BorderColor());
+        paint.fillRect(QRect(0,rc.height() - border, rc.width(), border), m_Skin.BorderColor());
+        paint.fillRect(QRect(0,0, border, rc.height()), m_Skin.BorderColor());
+        paint.fillRect(QRect(rc.right() - border,0, border, rc.height()), m_Skin.BorderColor());
+    }
+
+    //有播放器正在播放
+    if (m_Player == NULL)
+    {
+        //没有播放器
+        paint.fillRect(QRect(border,border, rc.width() - 2* border, rc.height() - 2* border), m_Skin.BackgroundColor());
+    }
+
 }
 
 void QWePlayer::on_btnShowPlayList_clicked()
@@ -954,6 +1070,20 @@ GetValue:
             }
         }
 
+        QDomElement eleCfgRightClick = elementCfg.firstChildElement("RightClick");
+        if (!eleCfgRightClick.isNull())
+        {
+            QString value = eleCfgRightClick.attribute("value");
+            if (value == "1")
+            {
+                SetRightClick(true);
+            }
+            else
+            {
+                SetRightClick(false);
+            }
+        }
+
         QDomElement eleCfgVRender = elementCfg.firstChildElement("VRender");
         if (!eleCfgVRender.isNull())
         {
@@ -1060,6 +1190,17 @@ void QWePlayer::SaveSetting(QString& path)
         else
         {
             nodeKeepAspect.setAttribute("value", "0");
+        }
+
+        QDomElement nodeRightClick = doc.createElement("RightClick");
+        nodeFile.appendChild(nodeRightClick);
+        if (m_enableRightClick == true)
+        {
+            nodeRightClick.setAttribute("value", "1");
+        }
+        else
+        {
+            nodeRightClick.setAttribute("value", "0");
         }
 
         QDomElement nodeVRender = doc.createElement("VRender");
@@ -1553,6 +1694,8 @@ int QWePlayer::PlayStop(bool AutoPlayNext)
     gPlayCfgData->SetNodeAttribute("UserConfig/Audio/Volume", "value", QString::number(m_VolumeValue));
     gPlayCfgData->SaveUserCfg();
 
+    ShowRendor(false);
+
     return 0;
 }
 int QWePlayer::PlayStart()
@@ -1571,6 +1714,8 @@ int QWePlayer::PlayStart()
     {
         return 0;
     }
+
+
 
     //当前scennaro已经播放完整了
     if (m_CurPlayScenaroIndex >=m_PlayScenaro.count())
@@ -1618,6 +1763,8 @@ int QWePlayer::PlayStart()
             m_AutoPlayNext = true;
         }
     }
+
+    ShowRendor(true);
 
     return 0;
 }
@@ -1907,6 +2054,7 @@ int QWePlayer::SetVolume(bool mute, int Value)
 
 void QWePlayer::on_sliderVol_valueChanged(int value)
 {
+    Q_UNUSED(value);
     m_VolumeValue = ui->sliderVol->value();
     ui->lblVol->setText(QString::number(m_VolumeValue));
 }
@@ -1982,4 +2130,31 @@ int QWePlayer::GetPlayInfo(PLAYFILE_INFO& info)
     }
 
     return -1;
+}
+
+void QWePlayer::ShowRendor(bool bShow)
+{
+    if (m_SoftRgbRender)
+    {
+        if (bShow)
+            m_SoftRgbRender->show();
+        else
+            m_SoftRgbRender->hide();
+    }
+
+    if (m_GlI420Render)
+    {
+        if (bShow)
+            m_GlI420Render->show();
+        else
+            m_GlI420Render->hide();
+    }
+
+    if (m_GlRGBARender)
+    {
+        if (bShow)
+            m_GlRGBARender->show();
+        else
+            m_GlRGBARender->hide();
+    }
 }

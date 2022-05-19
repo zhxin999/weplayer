@@ -1,7 +1,7 @@
 ﻿#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-
+#include <qglobal.h>
 #include "anLogs.h"
 #include "anMisc.h"
 #include "anPlayer.h"
@@ -691,12 +691,18 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
       MessageError("[%s:%d] NULL Param\n", __FUNCTION__, __LINE__);
       return -1;
    }
-   
-   pPlayer->task_loop_video = 0;
-   pPlayer->task_loop_audio = 0;
 
-   uv_thread_join(&(pPlayer->taskHandleVideo));
-   uv_thread_join(&(pPlayer->taskHandleAudio));
+   if (pPlayer->task_loop_audio)
+   {
+       pPlayer->task_loop_video = 0;
+       uv_thread_join(&(pPlayer->taskHandleVideo));
+   }
+
+   if (pPlayer->task_loop_video)
+   {
+       pPlayer->task_loop_audio = 0;
+       uv_thread_join(&(pPlayer->taskHandleAudio));
+   }
 
    memset(&pPlayer->taskHandleVideo, 0, sizeof(pPlayer->taskHandleVideo));
    memset(&pPlayer->taskHandleAudio, 0, sizeof(pPlayer->taskHandleAudio));
@@ -759,6 +765,16 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
         pPlayer->fmt_ctx->max_analyze_duration = 60000000;
         pPlayer->fmt_ctx->format_probesize = 50000000;
         pPlayer->instream_type = INSTREAM_TYPE_NET_STREAM;
+        iformat = av_find_input_format("mpegts");
+    }
+    else if (strncmp(FileName,"rtsp://", strlen("rtsp://")) == 0)
+    {
+        pPlayer->fmt_ctx->max_analyze_duration = 60000000;
+        pPlayer->fmt_ctx->format_probesize = 50000000;
+        pPlayer->instream_type = INSTREAM_TYPE_NET_STREAM;
+
+        //看看是不是支持tcp
+        av_dict_set(&options, "rtsp_transport", "tcp", 0);
     }
 
     err = avformat_open_input(&pPlayer->fmt_ctx, FileName, iformat, &options);  //&options
@@ -2270,6 +2286,8 @@ int ANPlayer_Inst_Open(ANPlayer_h pHandle, uint32_t Flag)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)pHandle;
 
+   Q_UNUSED(Flag);
+
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Pointer\n", __FUNCTION__, __LINE__);
@@ -2312,7 +2330,8 @@ int ANPlayer_Inst_Play(ANPlayer_h pHandle, long Seek, uint32_t Flag)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)pHandle;
    CMDList_t *Msg = NULL;
-   
+   Q_UNUSED(Flag);
+   Q_UNUSED(Seek);
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Pointer\n", __FUNCTION__, __LINE__);
@@ -2384,10 +2403,13 @@ int ANPlayer_Inst_Stop(ANPlayer_h pHandle)
 
    MessageOutput("[%s:%d] debug [%s]\n", __FUNCTION__, __LINE__, pPlayer->szFilename);
 
-   pPlayer->task_loop = 0;
-
-   uv_thread_join(&(pPlayer->taskHandleReader));
-   uv_thread_join(&(pPlayer->taskHandleTimer));
+   if (pPlayer->task_loop)
+   {
+       pPlayer->task_loop = 0;
+       
+       uv_thread_join(&(pPlayer->taskHandleReader));
+       uv_thread_join(&(pPlayer->taskHandleTimer));
+   }
 
    memset(&pPlayer->taskHandleReader, 0, sizeof(pPlayer->taskHandleReader));
    memset(&pPlayer->taskHandleTimer, 0, sizeof(pPlayer->taskHandleTimer));
@@ -2409,7 +2431,7 @@ int ANPlayer_Inst_Seek(ANPlayer_h pHandle, int64_t Seek, uint32_t Flag)
 {
    CMDList_t *Msg = NULL;
    ANPlayer_t* pPlayer = (ANPlayer_t*)pHandle;
-   
+   Q_UNUSED(Flag);
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Pointer\n", __FUNCTION__, __LINE__);
@@ -2511,6 +2533,7 @@ int ANPlayer_Inst_Set_PlayCallback(ANPlayer_h pHandle, ANPlayer_Video_CB VideoCb
 int ANPlayer_Inst_Set_Option(ANPlayer_h pHandle, ANPLAYER_SOPT_CODE OptCode, int Param1, void* Param2)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)pHandle;
+   Q_UNUSED(Param1);
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Pointer\n", __FUNCTION__, __LINE__);
@@ -2530,6 +2553,9 @@ int ANPlayer_Inst_Set_Option(ANPlayer_h pHandle, ANPLAYER_SOPT_CODE OptCode, int
 int ANPlayer_Inst_Get_Option(ANPlayer_h pHandle, ANPLAYER_GOPT_CODE OptCode, int Param1, void* Param2)
 {
    ANPlayer_t* pPlayer = (ANPlayer_t*)pHandle;
+   Q_UNUSED(Param1);
+   Q_UNUSED(Param2);
+   Q_UNUSED(OptCode);
    if (pPlayer == NULL)
    {
       MessageError("[%s:%d] NULL Pointer\n", __FUNCTION__, __LINE__);

@@ -30,8 +30,6 @@ public:
     qint64 m_pressTime;
 };
 
-#define min(a,b) ((a)<(b)? (a) :(b))
-#define max(a,b) ((a)>(b)? (a) :(b))
 
 class MainWindow : public QMainWindow
 {

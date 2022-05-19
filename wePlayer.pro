@@ -78,7 +78,6 @@ unix{
         }
     }
 
-
 }
 
 
@@ -97,7 +96,9 @@ SOURCES += \
     CWeVideoRender.cpp \
     CAudioDevs.cpp \
     CWeWidgetMisc.cpp \
-    dlgoption.cpp
+    dlgoption.cpp \
+    WePlayerSkin.cpp \
+    WePlayerLayout.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -115,7 +116,9 @@ HEADERS += \
     util/anRingQueneLF.h \
     CWeVideoRender.h \
     CAudioDevs.h \
-    dlgoption.h
+    dlgoption.h \
+    WePlayerSkin.h \
+    WePlayerLayout.h
 
 FORMS += \
         mainwindow.ui \

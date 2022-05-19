@@ -2,6 +2,7 @@
 #include <QColor>
 #include <QPainter>
 #include <QDebug>
+#include <qglobal.h>
 #include "anIncludes.h"
 
 #if _MSC_VER >= 1600
@@ -21,6 +22,7 @@ void CWeSlider::mouseReleaseEvent(QMouseEvent *ev)
 }
 void CWeSlider::mousePressEvent(QMouseEvent *ev)
 {
+    Q_UNUSED(ev);
     m_isPressed = true;
 }
 void CWeSlider::mouseMoveEvent(QMouseEvent *ev)
@@ -61,7 +63,7 @@ void CWeSlider::paintEvent(QPaintEvent* evt)
     int64_t CurPos, WorkerPos;
     int Max, Min, Value;
     int MiddleHeight = GetScaledSize(4);
-
+    Q_UNUSED(evt);
     Max = this->maximum();
     Min = this->minimum();
 

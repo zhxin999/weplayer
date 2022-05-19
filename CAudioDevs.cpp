@@ -198,8 +198,11 @@ void PlaybackDev::SetOutputFormat(int channels, int samplerate)
 }
 int PlaybackDev::PlayStop()
 {
-    TaskLoop = 0;
-    uv_thread_join(&m_Task);
+    if (TaskLoop)
+    {
+        TaskLoop = 0;
+        uv_thread_join(&m_Task);
+    }
     memset(&m_Task, 0, sizeof(m_Task));
     
    if (m_audConvertCtx)

@@ -110,6 +110,9 @@ public:
     void SetKeepAspect(bool bKeep);
     bool GetKeepAspect();
 
+    void EnableRightClick(bool bEnable);
+    bool GetEnableRightClick();
+
     int SetFormatExt(QString format);
     int SetUserFormat(QString format);
     QString GetUserFormat();

@@ -14,6 +14,7 @@
 #include "anPlayer.h"
 #include "CAudioDevs.h"
 #include "CWeVideoRender.h"
+#include "WePlayerSkin.h"
 
 namespace Ui {
 class QWePlayer;
@@ -98,6 +99,9 @@ public:
     void SetKeepAspect(bool bKeep);
     bool GetKeepAspect();
 
+    void SetRightClick(bool bEnable);
+    bool GetRightClick();
+
     int GetRenderMode();
     void SetRenderModeCfg(int mode);
 
@@ -140,10 +144,12 @@ private:
 
     int GetCurPlayItemState(int state);
     void SetCurPlayItemState(int idx, int state);
+    void ShowRendor(bool bShow);
 
 protected:
   virtual void resizeEvent(QResizeEvent *);
   virtual bool eventFilter(QObject *,QEvent *);
+  virtual void paintEvent(QPaintEvent*);
 
 signals:
     void sgnlPlayerMsg(int MsgCode, qint64 Param1, QString Param2, void* Param3);
@@ -228,6 +234,9 @@ private:
 
     QList<ANPlayer_h> m_HandleList;
     QString m_defCfgFile;
+
+    WePlayerSkin m_Skin;
+    bool m_enableRightClick;
 };
 
 #endif // QWEPLAYER_H

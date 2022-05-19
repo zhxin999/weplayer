@@ -179,6 +179,7 @@ void MainWindow::closeEvent( QCloseEvent * )
 
 void MainWindow::resizeEvent(QResizeEvent *evt)
 {
+    Q_UNUSED(evt);
     int titlebar_height = TITLE_BAR_HEIGHT;
 
     if (ui->frmTitleBar->isHidden())
@@ -496,7 +497,8 @@ void MainWindow::ToggleFullScreen()
 }
 void MainWindow::on_player_msg(int MsgCode, qint64 Param1, QString Param2, void* Param3)
 {
-    //
+    Q_UNUSED(Param1);
+    Q_UNUSED(Param3);
     if (MsgCode == PLAYER_MSG_VIDEO_DBCLICK)
     {
         ToggleFullScreen();
@@ -594,11 +596,13 @@ void MainWindow::on_btnOption_clicked()
     DlgOption dlgOption(NULL);
     int render_mode;
     bool keep_aspect = ui->videoWidget->GetKeepAspect();
+    bool enable_rightclick = ui->videoWidget->GetRightClick();
 
     render_mode = ui->videoWidget->GetRenderMode();
     dlgOption.SetHardAccelMode(render_mode);
     dlgOption.SetFormatExt(gPlayCfgData->GetNodeAttribute("DefaultConfig/Player/SupportFile", "extlist", ""));
 
+    dlgOption.EnableRightClick(enable_rightclick);
     dlgOption.SetKeepAspect(keep_aspect);
     dlgOption.SetUserFormat(gPlayCfgData->GetNodeAttribute("UserConfig/Format", "extlist", ""));
 
@@ -612,7 +616,7 @@ void MainWindow::on_btnOption_clicked()
         gPlayCfgData->SetNodeAttribute("UserConfig/Format", "extlist", usrExtList);
 
         ui->videoWidget->SetKeepAspect(dlgOption.GetKeepAspect());
-
+        ui->videoWidget->SetRightClick(dlgOption.GetEnableRightClick());
         ui->videoWidget->SetRenderModeCfg(mode);
         QString path("");
         ui->videoWidget->SaveSetting(path);
@@ -1032,7 +1036,7 @@ void MainWindow::checkNewVersion()
     url.append(params);
 
     request.setUrl(QUrl(url));
-    QNetworkReply* reply = m_NetManager->get(request);
+    m_NetManager->get(request);
 }
 
 void MainWindow::on_http_replay(QNetworkReply *reply)

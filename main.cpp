@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
             }
 
             //开始解析参数
-            for (int i = 2; i++; i<argc)
+            for (int i = 2; i<argc; i++)
             {
                 if (strncmp(argv[i], "-P=", 3) == 0)
                 {//记录下端口
