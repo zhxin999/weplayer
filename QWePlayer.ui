@@ -309,6 +309,9 @@ QPushButton:pressed{color: rgb(167, 167, 167);}</string>
      <height>71</height>
     </rect>
    </property>
+   <property name="focusPolicy">
+    <enum>Qt::NoFocus</enum>
+   </property>
    <property name="styleSheet">
     <string notr="true">background-color: rgb(24, 26, 28)</string>
    </property>

@@ -98,7 +98,8 @@ SOURCES += \
     CWeWidgetMisc.cpp \
     dlgoption.cpp \
     WePlayerSkin.cpp \
-    WePlayerLayout.cpp
+    WePlayerLayout.cpp \
+    DlgInFile.cpp
 
 HEADERS += \
         mainwindow.h \
@@ -118,12 +119,14 @@ HEADERS += \
     CAudioDevs.h \
     dlgoption.h \
     WePlayerSkin.h \
-    WePlayerLayout.h
+    WePlayerLayout.h \
+    DlgInFile.h
 
 FORMS += \
         mainwindow.ui \
     QWePlayer.ui \
-    dlgoption.ui
+    dlgoption.ui \
+    DlgInFile.ui
 
 RESOURCES += \
     resource.qrc

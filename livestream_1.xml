@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LiveStreawm>
+    <Addr>oneroom://192.168.8.90:9000?lport=9004&rssrc=10.10.10.1&rvendor=11223&lssrc=10.10.10.4&lvendor=11223&video=101&audio=200</Addr>
+    <PlayList mode="listloop">
+        <File>D:/VideoFiles/1080p_remuxout.ts</File>
+        <File>D:/VideoFiles/1.ts</File>
+    </PlayList>
+</LiveStreawm>

@@ -22,7 +22,7 @@
 #define PLAYLIST_BAR_WIDTH          200
 
 #define MENU_STYLE "QMenu{ background:rgb(255,255,255);border:none;}"\
-                   "QMenu::item{padding:6px 20px;color:rgb(51,51,51);font-size:14px;}"\
+                   "QMenu::item{padding:6px 20px;color:rgb(51,51,51);font-size:12px;}"\
                    "QMenu::item:hover{background-color:#00B1EA;}"\
                    "QMenu::item:selected{background-color:#409CE1;}"\
 
@@ -202,6 +202,10 @@ QWePlayer::QWePlayer(QWidget *parent) :
         ui->frmPlayCtrlBar->hide();
         m_Slider->hide();
     }
+
+    //event filter来处理这个事件
+    ui->frmPlayCtrlBar->setAttribute(Qt::WA_NoMousePropagation,true);
+    ui->frmPlaylistBar->setAttribute(Qt::WA_NoMousePropagation,true);
 }
 
 QWePlayer::~QWePlayer()
@@ -683,7 +687,7 @@ bool QWePlayer::eventFilter(QObject *watched, QEvent *event)
                 QPoint pt1 = evtMouse->pos();
                 QPoint pt = this->mapToGlobal(pt1);
 
-                QAction *actAddFile = menu.addAction("添加文件");
+                QAction *actAddFile = menu.addAction("添加网络流");
                 QAction *actOSD = menu.addAction("自定义OSD");
                 QAction *actDetail = menu.addAction("媒体信息");
                 menu.setStyleSheet(MENU_STYLE);

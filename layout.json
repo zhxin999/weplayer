@@ -1,0 +1,23 @@
+{
+    "titlebar":"show",
+    "bkcolor":"#FFFFFFFF",
+    "widgets":
+    [
+        {
+            "name":"123",
+            "type":"Player",
+            "x":0,
+            "y":0,
+            "w":100,
+            "h":100
+        },
+        {
+            "name":"123",
+            "type":"Player",
+            "x":0,
+            "y":0,
+            "w":100,
+            "h":100
+        }
+    ]
+}
