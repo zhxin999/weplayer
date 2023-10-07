@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <qglobal.h>
+#include <time.h>
 #include "anLogs.h"
 #include "anMisc.h"
 #include "anPlayer.h"
@@ -108,6 +109,8 @@ struct _ANPlayerData
 
    char szFilename[FILE_NAME_MAX];
    char szSubtextFilter[FILE_NAME_MAX];
+   //文件的打开的参数
+   uint32_t Flag;
    
    void* UserData;
 
@@ -692,13 +695,13 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
       return -1;
    }
 
-   if (pPlayer->task_loop_audio)
+   if (pPlayer->task_loop_video)
    {
        pPlayer->task_loop_video = 0;
        uv_thread_join(&(pPlayer->taskHandleVideo));
    }
 
-   if (pPlayer->task_loop_video)
+   if (pPlayer->task_loop_audio)
    {
        pPlayer->task_loop_audio = 0;
        uv_thread_join(&(pPlayer->taskHandleAudio));
@@ -744,7 +747,7 @@ static int anPlayer_Close_File(ANPlayer_t* pPlayer)
 static int anPlayer_Open_File(ANPlayer_t* pPlayer)
 {
     char* FileName;
-    AVInputFormat *iformat = NULL;
+    const AVInputFormat *iformat = NULL;
     int err;
     AVDictionary* options = NULL;
     char szError[256];
@@ -755,7 +758,7 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
 
     pPlayer->fmt_ctx = avformat_alloc_context();
     pPlayer->quit_time_base = av_gettime_relative();
-    pPlayer->quit_timeout = 60000000;
+    pPlayer->quit_timeout = 20000000;
     pPlayer->fmt_ctx->interrupt_callback.callback = anPlayer_Openfile_callback;
     pPlayer->fmt_ctx->interrupt_callback.opaque = pPlayer;
 
@@ -774,16 +777,23 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
         pPlayer->instream_type = INSTREAM_TYPE_NET_STREAM;
 
         //看看是不是支持tcp
-        av_dict_set(&options, "rtsp_transport", "tcp", 0);
+        if (pPlayer->Flag & ANPLYAER_OPENFLAG_RTSP_TCP)
+        {
+            av_dict_set(&options, "rtsp_transport", "tcp", 0);
+        }
     }
 
-    err = avformat_open_input(&pPlayer->fmt_ctx, FileName, iformat, &options);  //&options
+    err = avformat_open_input(&pPlayer->fmt_ctx, FileName, (AVInputFormat *)iformat, &options);  //&options
     if (err < 0)
     {
         av_strerror(err, szError, sizeof(szError));
         MessageError("[%s:%d]Could not open source file [%s], error[%s]\n", __FUNCTION__, __LINE__, FileName, szError);
         anPlayer_Close_File(pPlayer);
         av_dict_free(&options);
+        if (pPlayer->EventCb)
+        {
+            pPlayer->EventCb(pPlayer, ANPLYAER_EVENT_OPEN_FAILED, 0, NULL, NULL, pPlayer->UserData);
+        }
         return -1;
     }
 
@@ -792,6 +802,10 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
         MessageError("[%s:%d]Could not find stream information [%s]\n", __FUNCTION__, __LINE__, FileName);
         av_dict_free(&options);
         anPlayer_Close_File(pPlayer);
+        if (pPlayer->EventCb)
+        {
+            pPlayer->EventCb(pPlayer, ANPLYAER_EVENT_OPEN_FAILED, 1, NULL, NULL, pPlayer->UserData);
+        }
         return -1;
     }
     av_dict_free(&options);
@@ -800,11 +814,18 @@ static int anPlayer_Open_File(ANPlayer_t* pPlayer)
     if (err >= 0)
     {
         pPlayer->video_stream_idx = err;
-        if ((pPlayer->fmt_ctx->streams[pPlayer->video_stream_idx]->codecpar->width == 0) || 
-            (pPlayer->fmt_ctx->streams[pPlayer->video_stream_idx]->codecpar->height == 0))
+
+        AVStream* stream = pPlayer->fmt_ctx->streams[pPlayer->video_stream_idx];
+
+        if ((stream->codecpar->width == 0) ||
+            (stream->codecpar->height == 0))
         {
             MessageError("[%s:%d]Could not find stream information [%s]\n", __FUNCTION__, __LINE__, FileName);
             anPlayer_Close_File(pPlayer);
+            if (pPlayer->EventCb)
+            {
+                pPlayer->EventCb(pPlayer, ANPLYAER_EVENT_OPEN_FAILED, 0, NULL, NULL, pPlayer->UserData);
+            }
             return -1;
         }
     }
@@ -1296,19 +1317,19 @@ void anPlayer_Thread_Audio_dec(void* param)
       return;
    }
 
+   opts = NULL;
+   audio_stream = NULL;
+   audio_dec_ctx = NULL;
+   frame_ready = NULL;
+   audio_buffer = NULL;
+   audio_converter_ctx = NULL;
+
    pAudioFrameList = ANRingQLF_Create(128, sizeof(AVFrame*));
    if (pAudioFrameList == NULL)
    {
       MessageError("[%s:%d]Failed to create audio ring buffer\n", __FUNCTION__, __LINE__);
       goto quit;
    }
-
-   opts = NULL;
-   audio_stream = NULL;
-   audio_dec_ctx = NULL;
-   frame_ready = NULL;
-   audio_buffer  = NULL;
-   audio_converter_ctx = NULL;
 
    audio_stream = pPlayer->fmt_ctx->streams[pPlayer->audio_stream_idx];
 
@@ -1458,9 +1479,7 @@ void anPlayer_Thread_Audio_dec(void* param)
                         layout = AV_CH_LAYOUT_STEREO;
                      }
 
-                     dec_channel_layout =
-                         (frame_ready->channel_layout && av_frame_get_channels(frame_ready) == av_get_channel_layout_nb_channels(frame_ready->channel_layout)) ?
-                         frame_ready->channel_layout : av_get_default_channel_layout(av_frame_get_channels(frame_ready));
+                     dec_channel_layout = frame_ready->channel_layout;
 
                      audio_converter_ctx = swr_alloc_set_opts(\
                         audio_converter_ctx,
@@ -1625,9 +1644,9 @@ void anPlayer_Thread_Reader(void* param)
    int Ret;
    int64_t TimeNow;
    AVPacket NewPacket;
-   uint64_t video_st_dts = AV_NOPTS_VALUE;
-   uint64_t audio_st_dts = AV_NOPTS_VALUE;
-   uint64_t pkt_dts;
+   int64_t video_st_dts = AV_NOPTS_VALUE;
+   int64_t audio_st_dts = AV_NOPTS_VALUE;
+   int64_t pkt_dts;
    int need_read_pkt;
    int reset_pts_firstframe;
    int QuitType = ANPLYAER_STOP_TYPE_USER;
@@ -1983,7 +2002,7 @@ void anPlayer_Thread_Reader(void* param)
                   && (pPlayer->instream_type == INSTREAM_TYPE_NET_STREAM)\
                   )
                {
-                  if ((pkt_dts < video_st_dts - 2000) || (pkt_dts > 2000 + video_st_dts))
+                  if ((pkt_dts < video_st_dts - 20000) || (pkt_dts > 20000 + video_st_dts))
                   {
                      anPlayer_Close_File(pPlayer);
                      continue;
@@ -2301,7 +2320,8 @@ int ANPlayer_Inst_Open(ANPlayer_h pHandle, uint32_t Flag)
    }
    
    MessageOutput("[%s:%d] debug [%s]\n", __FUNCTION__, __LINE__, pPlayer->szFilename);
-
+   
+   pPlayer->Flag = Flag;
    pPlayer->task_loop = 1;
    pPlayer->task_loop_reader = 1;
    pPlayer->task_loop_video = 0;
